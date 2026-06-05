@@ -1,0 +1,40 @@
+{
+  "name": "@viralcut/portal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "tsc -b && vite build",
+    "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
+    "preview": "vite preview --port 3000",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/plus-jakarta-sans": "^5.2.5",
+    "@hookform/resolvers": "^4.1.3",
+    "@tanstack/react-query": "^5.69.0",
+    "@viralcut/shared-types": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.484.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "react-router-dom": "^7.6.0",
+    "tailwind-merge": "^3.0.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.14",
+    "@types/react": "^19.0.11",
+    "@types/react-dom": "^19.0.4",
+    "@viralcut/config": "workspace:*",
+    "@vitejs/plugin-react": "^4.4.1",
+    "tailwindcss": "^4.0.14",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.5"
+  }
+}

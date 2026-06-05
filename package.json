@@ -1,0 +1,27 @@
+{
+  "name": "viralcut",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev:api": "pnpm --filter @viralcut/api dev",
+    "dev:portal": "pnpm --filter @viralcut/portal dev",
+    "build:portal": "pnpm tokens:build && pnpm --filter @viralcut/portal build",
+    "tokens:build": "pnpm --filter @viralcut/ui-tokens build",
+    "db:up": "docker compose up -d postgres",
+    "db:generate": "pnpm --filter @viralcut/api prisma:generate",
+    "db:push": "dotenv -e .env -- pnpm --filter @viralcut/api db:push",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @viralcut/api db:migrate",
+    "db:migrate:deploy": "dotenv -e .env -- pnpm --filter @viralcut/api prisma:migrate:deploy",
+    "db:migrate:resolve": "dotenv -e .env -- pnpm --filter @viralcut/api prisma:migrate:resolve",
+    "db:seed": "dotenv -e .env -- pnpm --filter @viralcut/api prisma:seed",
+    "db:studio": "dotenv -e .env -- pnpm --filter @viralcut/api prisma:studio",
+    "mobile": "cd apps/mobile-creator && flutter run",
+    "mobile:pub": "cd apps/mobile-creator && flutter pub get"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  }
+}

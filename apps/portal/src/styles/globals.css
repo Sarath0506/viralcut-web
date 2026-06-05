@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@import "../../../../packages/ui-tokens/dist/web.css";
+
+@theme inline {
+  --color-background: var(--vc-background);
+  --color-foreground: var(--vc-on-background);
+  --color-primary: var(--vc-primary);
+  --color-primary-foreground: var(--vc-on-primary);
+  --color-surface: var(--vc-surface);
+  --color-surface-variant: var(--vc-surface-variant);
+  --color-muted: var(--vc-muted);
+  --color-border: var(--vc-border);
+  --color-money: var(--vc-money);
+  --color-money-bright: var(--vc-money-bright);
+  --color-destructive: var(--vc-error);
+  --color-warning: var(--vc-warning);
+  --color-deep: var(--vc-deep-surface);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", var(--font-sans);
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    height: 100%;
+  }
+  body {
+    @apply min-h-full bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes toast-enter {
+    from {
+      opacity: 0;
+      transform: translateX(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer utilities {
+  .brand-login-gradient {
+    background-color: #4800a0;
+    background-image:
+      radial-gradient(at 0% 0%, hsl(263 88% 45%) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsl(272 81% 57%) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(220 78% 32%) 0, transparent 50%);
+  }
+
+  .brand-login-glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(226, 232, 240, 0.5);
+  }
+}

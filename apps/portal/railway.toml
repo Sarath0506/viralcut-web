@@ -1,0 +1,17 @@
+# Railway config for @viralcut/portal (monorepo).
+#
+# Service settings (Railway dashboard):
+#   Source: GitHub repo, branch main
+#   Root Directory: /
+#   Config file path: /apps/portal/railway.toml
+#   Variables: VITE_API_URL = your API public URL
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm build:portal"
+
+[deploy]
+startCommand = "pnpm --filter @viralcut/portal start"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
