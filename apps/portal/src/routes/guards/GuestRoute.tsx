@@ -1,10 +1,12 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { dashboardPathForRole } from "@/lib/portal";
 import { useAuth } from "@/providers/auth-provider";
 
-/** Allow authenticated brand users to complete workspace invites. */
 function isInviteAcceptPath(pathname: string): boolean {
-  return pathname === "/invite/accept" || pathname.endsWith("/invite/accept");
+  return (
+    pathname === "/invite/campaign" || pathname.endsWith("/invite/campaign")
+  );
 }
 
 export function GuestRoute() {
@@ -16,7 +18,9 @@ export function GuestRoute() {
   }
 
   if (auth && !isInviteAcceptPath(pathname)) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate to={dashboardPathForRole(auth.user.role)} replace />
+    );
   }
 
   return <Outlet />;

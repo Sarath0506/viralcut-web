@@ -5,11 +5,9 @@ import {
   buildCampaignBody,
   hasInvalidReferenceAssets,
 } from "@/features/campaigns/lib/campaign-payload";
-import { meetsMinimumRuleText } from "@/features/campaigns/lib/rule-points";
-import { ApiError, brandApi } from "@/lib/api";
-import { useAuth } from "@/providers/auth-provider";
+import { ApiError, portalApi } from "@/lib/api";
+import { useAuth, usePortalRole } from "@/providers/auth-provider";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
-import { useSelectedBrand } from "@/providers/selected-brand-provider";
 
 function apiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) return error.message;
@@ -20,35 +18,27 @@ function apiErrorMessage(error: unknown, fallback: string): string {
 export function useCampaignDraftSave() {
   const navigate = useNavigate();
   const { getToken } = useAuth();
-  const { brandProfileId } = useSelectedBrand();
-  const { draft, update, reset } = useCampaignWizard();
+  const role = usePortalRole();
+  const isAdmin = role === "admin";
+  const { draft, reset, saveNow } = useCampaignWizard();
   const [saving, setSaving] = useState(false);
+
+  const campaignsBase = isAdmin ? "/admin/campaigns" : "/campaigns";
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
     const title = draft.title.trim();
-    if (title.length < 3) {
-      throw new Error("Enter a campaign name (at least 3 characters) to save a draft.");
-    }
-
-    const token = getToken();
-    if (!token) {
-      throw new Error("Your session expired. Please log in again.");
+    if (!title) {
+      throw new Error("Enter a campaign name to save a draft.");
     }
 
     setSaving(true);
     try {
-      const body = buildCampaignBody(draft, "draft", brandProfileId);
-      if (draft.campaignId) {
-        await brandApi.campaigns.update(token, draft.campaignId, body);
-      } else {
-        const created = await brandApi.campaigns.create(token, body);
-        update({ campaignId: created.id });
-      }
+      await saveNow("review");
       return true;
     } finally {
       setSaving(false);
     }
-  }, [brandProfileId, draft, getToken, update]);
+  }, [draft.title, saveNow]);
 
   const publish = useCallback(async (): Promise<{ id: string }> => {
     if (hasInvalidReferenceAssets(draft.referenceAssets)) {
@@ -57,12 +47,8 @@ export function useCampaignDraftSave() {
       );
     }
 
-    const title = draft.title.trim();
-    if (title.length < 3) {
-      throw new Error("Campaign name is required.");
-    }
-    if (!meetsMinimumRuleText(draft.briefHook)) {
-      throw new Error("Add at least one hook point (10+ characters total).");
+    if (isAdmin && !draft.inviteAcceptedAt) {
+      throw new Error("Invite a brand and wait for acceptance before publishing.");
     }
 
     const token = getToken();
@@ -72,30 +58,40 @@ export function useCampaignDraftSave() {
 
     setSaving(true);
     try {
-      const body = buildCampaignBody(draft, "live", brandProfileId);
+      const body = buildCampaignBody(draft, "live");
       if (draft.campaignId) {
-        const updated = await brandApi.campaigns.update(token, draft.campaignId, body);
+        const updated = await portalApi.campaigns.update(
+          token,
+          draft.campaignId,
+          { ...body, wizardStep: "review" },
+        );
         return { id: updated.id };
       }
-      const created = await brandApi.campaigns.create(token, body);
+      const created = await portalApi.campaigns.create(token, {
+        ...body,
+        wizardStep: "review",
+      });
       return { id: created.id };
     } finally {
       setSaving(false);
     }
-  }, [brandProfileId, draft, getToken]);
+  }, [draft, getToken, isAdmin]);
 
   const saveDraftWithFeedback = useCallback(
     async (toast: (message: string, type?: "success" | "error") => void) => {
       try {
         await saveDraft();
+        const campaignId = draft.campaignId;
         toast("Campaign saved as draft.", "success");
         reset();
-        navigate("/campaigns");
+        navigate(
+          campaignId ? `${campaignsBase}/${campaignId}` : campaignsBase,
+        );
       } catch (error) {
         toast(apiErrorMessage(error, "Could not save draft."), "error");
       }
     },
-    [navigate, reset, saveDraft],
+    [campaignsBase, draft.campaignId, navigate, reset, saveDraft],
   );
 
   const publishWithFeedback = useCallback(
@@ -106,15 +102,21 @@ export function useCampaignDraftSave() {
         const result = await publish();
         toast("Campaign published. Creators can now discover it.", "success");
         reset();
-        navigate("/campaigns");
+        navigate(campaignsBase);
         return result.id;
       } catch (error) {
         toast(apiErrorMessage(error, "Could not publish campaign."), "error");
         return null;
       }
     },
-    [navigate, publish, reset],
+    [campaignsBase, navigate, publish, reset],
   );
 
-  return { saveDraft, publish, saveDraftWithFeedback, publishWithFeedback, saving };
+  return {
+    saveDraft,
+    publish,
+    saveDraftWithFeedback,
+    publishWithFeedback,
+    saving,
+  };
 }

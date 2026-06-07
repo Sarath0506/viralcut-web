@@ -1,6 +1,6 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
-import { Rocket } from "lucide-react";
+import { Rocket, UserPlus } from "lucide-react";
 
 import { Card, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toaster";
@@ -10,6 +10,7 @@ import {
 } from "@/features/campaigns/components/campaign-wizard-layout";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
+import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { hasInvalidReferenceAssets } from "@/features/campaigns/lib/campaign-payload";
 import {
   estimateViewsFromBudget,
@@ -18,10 +19,14 @@ import {
 import { formatPlatformList } from "@/features/campaigns/lib/platform-labels";
 import { parseRulePoints } from "@/features/campaigns/lib/rule-points";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { usePortalRole } from "@/providers/auth-provider";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 
 export function CampaignReviewPage() {
   const navigate = useNavigate();
+  const { goBack, backLabel } = useWizardBack();
+  const role = usePortalRole();
+  const isAdmin = role === "admin";
   const { draft, paths } = useCampaignWizard();
   const { toast } = useToast();
   const { saveDraftWithFeedback, publishWithFeedback, saving } =
@@ -38,6 +43,8 @@ export function CampaignReviewPage() {
     Number(draft.budgetRupees),
     Number(draft.ratePer1kRupees),
   );
+
+  const publishBlocked = isAdmin && !draft.inviteAcceptedAt;
 
   async function onPublish() {
     await publishWithFeedback(toast);
@@ -208,11 +215,32 @@ export function CampaignReviewPage() {
             )}
           </Card>
         </div>
+        {isAdmin && draft.campaignId ? (
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Brand collaboration</p>
+                <p className="text-xs text-muted-foreground">
+                  {draft.inviteAcceptedAt
+                    ? "A brand has accepted the invite. You can publish together."
+                    : "Invite a brand before publishing this campaign."}
+                </p>
+              </div>
+              <Link
+                to={`/admin/campaigns/${draft.campaignId}/invite`}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+              >
+                <UserPlus className="h-4 w-4" />
+                {draft.inviteAcceptedAt ? "Manage invite" : "Invite brand"}
+              </Link>
+            </div>
+          </Card>
+        ) : null}
         <CampaignWizardFooter
           leftAction={{
             id: "back",
-            label: "Back",
-            onClick: () => navigate(-1),
+            label: backLabel,
+            onClick: goBack,
             buttonProps: { size: "sm", variant: "outline" },
           }}
           rightActions={[
@@ -224,13 +252,22 @@ export function CampaignReviewPage() {
             },
             {
               id: "publish",
-              label: saving ? "Publishing..." : "Publish Campaign",
+              label: saving
+                ? "Publishing..."
+                : publishBlocked
+                  ? "Invite brand to publish"
+                  : "Publish Campaign",
               onClick: () => void onPublish(),
-              icon: !saving ? <Rocket className="h-4 w-4" /> : undefined,
+              icon: !saving && !publishBlocked ? (
+                <Rocket className="h-4 w-4" />
+              ) : undefined,
               buttonProps: {
                 size: "sm",
                 variant: "success",
-                disabled: saving || invalidAssets,
+                disabled: saving || invalidAssets || publishBlocked,
+                title: publishBlocked
+                  ? "Invite a brand and wait for acceptance before publishing"
+                  : undefined,
               },
             },
           ]}

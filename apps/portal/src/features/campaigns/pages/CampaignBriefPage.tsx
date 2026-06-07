@@ -10,17 +10,18 @@ import {
 import { ReferenceAssetsEditor } from "@/features/campaigns/components/reference-assets-editor";
 import { SourceAssetsEditor } from "@/features/campaigns/components/source-assets-editor";
 import { RulePointsEditor } from "@/features/campaigns/components/rule-points-editor";
-import { meetsMinimumRuleText } from "@/features/campaigns/lib/rule-points";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import { normalizeUploadUrl } from "@/lib/media-url";
 import { ApiError, brandApi } from "@/lib/api";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
+import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 import { useAuth } from "@/providers/auth-provider";
 
 export function CampaignBriefPage() {
   const navigate = useNavigate();
-  const { draft, paths, update } = useCampaignWizard();
+  const { goBack, backLabel } = useWizardBack();
+  const { draft, paths, update, saveNow } = useCampaignWizard();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
@@ -134,8 +135,8 @@ export function CampaignBriefPage() {
         <CampaignWizardFooter
           leftAction={{
             id: "back",
-            label: "Back",
-            onClick: () => navigate(-1),
+            label: backLabel,
+            onClick: goBack,
             buttonProps: { size: "sm", variant: "outline" },
           }}
           rightActions={[
@@ -148,12 +149,11 @@ export function CampaignBriefPage() {
             {
               id: "next",
               label: "Next",
-              onClick: () => navigate(paths.payout),
-              icon: <ArrowRight className="h-4 w-4" />,
-              buttonProps: {
-                size: "sm",
-                disabled: !meetsMinimumRuleText(draft.briefHook),
+              onClick: () => {
+                void saveNow("payout").then(() => navigate(paths.payout));
               },
+              icon: <ArrowRight className="h-4 w-4" />,
+              buttonProps: { size: "sm" },
             },
           ]}
         />

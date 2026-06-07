@@ -8,14 +8,18 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { authApi, type AuthResponse } from "@/lib/api";
+import { authApi, registerApiAuthHandlers, type AuthResponse } from "@/lib/api";
 import {
   clearStoredAuth,
   getStoredAuth,
   setStoredAuth,
 } from "@/lib/auth-storage";
-import type { Portal } from "@/lib/portal";
-import { selectedBrandStorageKey } from "@/lib/portal";
+import { connectSocket } from "@/lib/socket";
+import {
+  dashboardPathForRole,
+  portalFromRole,
+  type Portal,
+} from "@/lib/portal";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 type AuthContextValue = {
@@ -27,16 +31,13 @@ type AuthContextValue = {
     portal: Portal,
     redirectTo?: string,
   ) => Promise<void>;
-  register: (
-    data: {
-      email: string;
-      password: string;
-      companyName: string;
-      displayName?: string;
-      acceptTerms: true;
-    },
-    portal: Portal,
-  ) => Promise<void>;
+  register: (data: {
+    email: string;
+    password: string;
+    companyName: string;
+    displayName?: string;
+    acceptTerms: true;
+  }) => Promise<void>;
   logout: (redirectTo?: string) => void;
   setSession: (session: AuthResponse) => void;
   getToken: () => string | null;
@@ -54,6 +55,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    registerApiAuthHandlers({
+      getRefreshToken: () => getStoredAuth()?.tokens.refreshToken ?? null,
+      onSessionRefreshed: (session) => {
+        setStoredAuth(session);
+        setAuth(session);
+        connectSocket(session.tokens.accessToken);
+      },
+      onSessionExpired: () => {
+        const role = getStoredAuth()?.user.role;
+        clearStoredAuth();
+        setAuth(null);
+        navigate(role === "admin" ? "/admin/login" : "/login", {
+          replace: true,
+        });
+      },
+    });
+  }, [navigate]);
+
   const persist = useCallback((next: AuthResponse) => {
     setStoredAuth(next);
     setAuth(next);
@@ -68,23 +88,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) => {
       const res = await authApi.login(portal, { email, password });
       persist(res);
-      navigate(safeRedirectPath(redirectTo), { replace: true });
+      const defaultPath = dashboardPathForRole(res.user.role);
+      navigate(safeRedirectPath(redirectTo ?? defaultPath), { replace: true });
     },
     [persist, navigate],
   );
 
   const register = useCallback(
-    async (
-      data: {
-        email: string;
-        password: string;
-        companyName: string;
-        displayName?: string;
-        acceptTerms: true;
-      },
-      portal: Portal,
-    ) => {
-      const res = await authApi.register(portal, data);
+    async (data: {
+      email: string;
+      password: string;
+      companyName: string;
+      displayName?: string;
+      acceptTerms: true;
+    }) => {
+      const res = await authApi.register(data);
       persist(res);
       navigate("/dashboard", { replace: true });
     },
@@ -104,12 +122,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         ).catch(() => undefined);
       }
-      if (auth?.user.role) {
-        localStorage.removeItem(selectedBrandStorageKey(auth.user.role));
-      }
       clearStoredAuth();
       setAuth(null);
-      navigate(safeRedirectPath(redirectTo ?? "/login"), { replace: true });
+      const loginPath =
+        auth?.user.role === "admin" ? "/admin/login" : "/login";
+      navigate(safeRedirectPath(redirectTo ?? loginPath), { replace: true });
     },
     [auth, navigate],
   );
@@ -141,5 +158,5 @@ export function useAuth() {
 export function usePortalRole(): Portal | null {
   const { auth } = useAuth();
   if (!auth) return null;
-  return auth.user.role === "agency" ? "agency" : "brand";
+  return portalFromRole(auth.user.role);
 }

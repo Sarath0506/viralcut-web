@@ -37,6 +37,101 @@ export class ApiError extends Error {
   }
 }
 
+type ApiAuthHandlers = {
+  getRefreshToken: () => string | null;
+  onSessionRefreshed: (session: AuthResponse) => void;
+  onSessionExpired: () => void;
+};
+
+let apiAuthHandlers: ApiAuthHandlers | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+
+export function registerApiAuthHandlers(handlers: ApiAuthHandlers): void {
+  apiAuthHandlers = handlers;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!apiAuthHandlers) return null;
+
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const refreshToken = apiAuthHandlers!.getRefreshToken();
+      if (!refreshToken) return null;
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const body = (await res.json()) as ApiEnvelope<AuthResponse>;
+        if (!res.ok || !body.success || !body.data) {
+          apiAuthHandlers!.onSessionExpired();
+          return null;
+        }
+        apiAuthHandlers!.onSessionRefreshed(body.data);
+        return body.data.tokens.accessToken;
+      } catch {
+        apiAuthHandlers!.onSessionExpired();
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+
+  return refreshInFlight;
+}
+
+type AuthedFetchOptions = RequestInit & {
+  accessToken?: string;
+  json?: boolean;
+  _retried?: boolean;
+};
+
+async function authedFetch<T>(
+  path: string,
+  options: AuthedFetchOptions = {},
+): Promise<T> {
+  const { accessToken, json = true, _retried, ...init } = options;
+  const headers = new Headers(init.headers);
+  if (json) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const body = (await res.json()) as ApiEnvelope<T>;
+
+  if (
+    res.status === 401 &&
+    body.error?.code === "UNAUTHORIZED" &&
+    accessToken &&
+    !_retried &&
+    apiAuthHandlers
+  ) {
+    const nextToken = await refreshAccessToken();
+    if (nextToken) {
+      return authedFetch<T>(path, {
+        ...options,
+        accessToken: nextToken,
+        _retried: true,
+      });
+    }
+  }
+
+  if (!res.ok || !body.success || body.data === null) {
+    throw new ApiError(
+      body.error?.code ?? "INTERNAL_ERROR",
+      body.error?.message ?? "Request failed",
+    );
+  }
+
+  return body.data;
+}
+
 export async function apiFetchPublic<T>(
   path: string,
   init?: RequestInit,
@@ -62,24 +157,7 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {},
 ): Promise<T> {
-  const { accessToken, ...init } = options;
-  const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  const body = (await res.json()) as ApiEnvelope<T>;
-
-  if (!res.ok || !body.success || body.data === null) {
-    throw new ApiError(
-      body.error?.code ?? "INTERNAL_ERROR",
-      body.error?.message ?? "Request failed",
-    );
-  }
-
-  return body.data;
+  return authedFetch<T>(path, options);
 }
 
 export async function apiFetchForm<T>(
@@ -87,26 +165,12 @@ export async function apiFetchForm<T>(
   options: Omit<RequestInit, "body"> & { body: FormData; accessToken?: string },
 ): Promise<T> {
   const { accessToken, ...init } = options;
-  const headers = new Headers(init.headers);
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
+  return authedFetch<T>(path, {
     ...init,
-    headers,
+    accessToken,
+    json: false,
     body: options.body,
   });
-  const body = (await res.json()) as ApiEnvelope<T>;
-
-  if (!res.ok || !body.success || body.data === null) {
-    throw new ApiError(
-      body.error?.code ?? "INTERNAL_ERROR",
-      body.error?.message ?? "Request failed",
-    );
-  }
-
-  return body.data;
 }
 
 type RegisterPayload = {
@@ -118,8 +182,8 @@ type RegisterPayload = {
 };
 
 export const authApi = {
-  register: (portal: Portal, payload: RegisterPayload) =>
-    apiFetch<AuthResponse>(`/auth/${portal}/register`, {
+  register: (payload: RegisterPayload) =>
+    apiFetch<AuthResponse>("/auth/brand/register", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -130,17 +194,14 @@ export const authApi = {
       body: JSON.stringify(payload),
     }),
 
-  forgotPassword: (portal: Portal, email: string) =>
-    apiFetch<{ sent: boolean }>(`/auth/${portal}/forgot-password`, {
+  forgotPassword: (email: string) =>
+    apiFetch<{ sent: boolean }>("/auth/brand/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
 
-  resetPassword: (
-    portal: Portal,
-    payload: { token: string; password: string },
-  ) =>
-    apiFetch<{ reset: boolean }>(`/auth/${portal}/reset-password`, {
+  resetPassword: (payload: { token: string; password: string }) =>
+    apiFetch<{ reset: boolean }>("/auth/brand/reset-password", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -151,40 +212,39 @@ export const authApi = {
       body: JSON.stringify({ refreshToken }),
     }),
 
-  previewBrandInvite: (token: string) =>
+  previewCampaignInvite: (token: string) =>
     apiFetchPublic<{
       valid: boolean;
       expired: boolean;
-      agencyName: string | null;
-      brandName: string | null;
+      alreadyAccepted: boolean;
+      campaignId: string | null;
+      campaignTitle: string | null;
       email: string | null;
-    }>(`/auth/brand-invite/preview?token=${encodeURIComponent(token)}`),
+      needsSignup: boolean;
+      hasBrandAccount: boolean;
+    }>(`/auth/campaign-invite/preview?token=${encodeURIComponent(token)}`),
 
-  acceptBrandInvite: (payload: {
+  acceptCampaignInvite: (payload: {
     token: string;
     password?: string;
     displayName?: string;
+    companyName?: string;
   }) =>
-    apiFetchPublic<AuthResponse & { accepted: boolean; brandProfileId: string }>(
-      "/auth/brand-invite/accept",
-      { method: "POST", body: JSON.stringify(payload) },
-    ),
-};
-
-export type BrandWorkspace = {
-  brandProfileId: string;
-  companyName: string;
-  linkedAgency: { id: string; companyName: string } | null;
-};
-
-export type BrandAgencyConnection = {
-  brandProfileId: string;
-  companyName: string;
-  agency: { id: string; companyName: string };
+    apiFetchPublic<
+      | AuthResponse & { campaign: Campaign }
+      | { needsSignup: true }
+    >("/auth/campaign-invite/accept", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export type Campaign = {
   id: string;
+  brandProfileId: string | null;
+  ownership: "brand_created" | "admin_created";
+  wizardStep: "basics" | "brief" | "payout" | "review";
+  inviteAcceptedAt: string | null;
   title: string;
   category: string | null;
   platform: string;
@@ -207,7 +267,10 @@ export type Campaign = {
   poolRemainingPercent: number;
   startDate: string | null;
   createdAt: string;
+  updatedAt?: string;
   submissionCount?: number;
+  brandCompanyName?: string | null;
+  pendingInviteEmail?: string | null;
 };
 
 export type PaginatedCampaigns = {
@@ -238,57 +301,44 @@ export type BrandStats = {
   totalViews: number;
 };
 
-export type ManagedBrand = {
-  brandProfileId: string;
-  companyName: string;
-  hasOwner: boolean;
-  campaignCount: number;
-  pendingInvite: { email: string; expiresAt: string } | null;
-};
-
-export type AgencyMe = {
-  id: string;
-  role: string;
-  email: string | null;
-  displayName: string | null;
-  agency: { id: string; companyName: string } | null;
-  managedBrands: Array<{
-    brandProfileId: string;
-    companyName: string;
-    hasOwner: boolean;
-    inviteStatus: string | null;
-  }>;
-};
-
 export type BrandMe = {
   id: string;
   role: string;
   email: string | null;
   displayName: string | null;
   companyName: string | null;
-  brandProfile?: { id: string; companyName: string } | null;
-  linkedAgency?: { id: string; companyName: string } | null;
-  workspaces?: BrandWorkspace[];
-  agencyConnections?: BrandAgencyConnection[];
+  brandProfile?: { id: string; companyName: string; logoUrl?: string | null } | null;
+};
+
+export type AdminBrand = {
+  id: string;
+  companyName: string;
+  logoUrl: string | null;
+  email: string | null;
+  displayName: string | null;
+  campaignCount: number;
+  createdAt: string;
+};
+
+export type CampaignInvite = {
+  id: string;
+  campaignId: string;
+  email: string;
+  status: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
 };
 
 const campaignsApi = {
   list: (
     token: string,
-    params?: {
-      status?: string;
-      page?: number;
-      limit?: number;
-      brandProfileId?: string;
-    },
+    params?: { status?: string; page?: number; limit?: number },
   ) => {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     if (params?.page) search.set("page", String(params.page));
     if (params?.limit) search.set("limit", String(params.limit));
-    if (params?.brandProfileId) {
-      search.set("brandProfileId", params.brandProfileId);
-    }
     const q = search.toString();
     return apiFetch<PaginatedCampaigns>(`/campaigns${q ? `?${q}` : ""}`, {
       accessToken: token,
@@ -306,6 +356,12 @@ const campaignsApi = {
     }),
   update: (token: string, id: string, body: Record<string, unknown>) =>
     apiFetch<Campaign>(`/campaigns/${id}`, {
+      method: "PATCH",
+      accessToken: token,
+      body: JSON.stringify(body),
+    }),
+  updateStep: (token: string, id: string, body: Record<string, unknown>) =>
+    apiFetch<Campaign>(`/campaigns/${id}/step`, {
       method: "PATCH",
       accessToken: token,
       body: JSON.stringify(body),
@@ -342,15 +398,10 @@ const campaignsApi = {
 };
 
 const submissionsApi = {
-  list: (
-    token: string,
-    params?: { status?: string; brandProfileId?: string },
-  ) => {
+  list: (token: string, params?: { status?: string; campaignId?: string }) => {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
-    if (params?.brandProfileId) {
-      search.set("brandProfileId", params.brandProfileId);
-    }
+    if (params?.campaignId) search.set("campaignId", params.campaignId);
     const q = search.toString();
     return apiFetch<SubmissionListItem[]>(`/submissions${q ? `?${q}` : ""}`, {
       accessToken: token,
@@ -372,87 +423,62 @@ const submissionsApi = {
     }),
 };
 
-export const brandApi = {
+export const portalApi = {
   me: (token: string) =>
     apiFetch<BrandMe>("/users/me", { accessToken: token }),
 
-  stats: (token: string, brandProfileId?: string) => {
-    const q = brandProfileId
-      ? `?brandProfileId=${encodeURIComponent(brandProfileId)}`
-      : "";
-    return apiFetch<BrandStats>(`/submissions/stats${q}`, { accessToken: token });
-  },
-
-  campaigns: campaignsApi,
-  submissions: submissionsApi,
-
-  agency: {
-    get: (token: string, brandProfileId?: string) => {
-      const q = brandProfileId
-        ? `?brandProfileId=${encodeURIComponent(brandProfileId)}`
-        : "";
-      return apiFetch<{
-        agency: { id: string; companyName: string; linkedAt: string } | null;
-      }>(`/brand/agency${q}`, { accessToken: token });
-    },
-    revoke: (token: string, brandProfileId?: string) => {
-      const q = brandProfileId
-        ? `?brandProfileId=${encodeURIComponent(brandProfileId)}`
-        : "";
-      return apiFetch<{ revoked: boolean }>(`/brand/agency${q}`, {
-        method: "DELETE",
-        accessToken: token,
-      });
-    },
-  },
-};
-
-export const agencyApi = {
-  me: (token: string) =>
-    apiFetch<AgencyMe>("/users/me", { accessToken: token }),
-
-  brands: {
-    list: (token: string) =>
-      apiFetch<ManagedBrand[]>("/agency/brands", { accessToken: token }),
-    create: (
-      token: string,
-      body: { companyName: string; contactEmail?: string },
-    ) =>
-      apiFetch<{ id: string; companyName: string; inviteSent: boolean }>(
-        "/agency/brands",
-        {
-          method: "POST",
-          accessToken: token,
-          body: JSON.stringify(body),
-        },
-      ),
-    get: (token: string, brandProfileId: string) =>
-      apiFetch<Record<string, unknown>>(`/agency/brands/${brandProfileId}`, {
-        accessToken: token,
-      }),
-    invite: (token: string, brandProfileId: string, email: string) =>
-      apiFetch<{ sent: boolean; inviteId: string }>(
-        `/agency/brands/${brandProfileId}/invites`,
-        {
-          method: "POST",
-          accessToken: token,
-          body: JSON.stringify({ email }),
-        },
-      ),
-    revokeLink: (token: string, brandProfileId: string) =>
-      apiFetch<{ revoked: boolean }>(
-        `/agency/brands/${brandProfileId}/link`,
-        { method: "DELETE", accessToken: token },
-      ),
-  },
-
-  stats: (token: string, brandProfileId?: string) => {
-    const q = brandProfileId
-      ? `?brandProfileId=${encodeURIComponent(brandProfileId)}`
-      : "";
-    return apiFetch<BrandStats>(`/submissions/stats${q}`, { accessToken: token });
-  },
+  stats: (token: string) =>
+    apiFetch<BrandStats>("/submissions/stats", { accessToken: token }),
 
   campaigns: campaignsApi,
   submissions: submissionsApi,
 };
+
+export const adminApi = {
+  dashboard: (token: string) =>
+    apiFetch<{
+      brandCount: number;
+      campaignCount: number;
+      pendingInvites: number;
+    }>("/admin/dashboard", { accessToken: token }),
+
+  brands: (token: string) =>
+    apiFetch<AdminBrand[]>("/admin/brands", { accessToken: token }),
+
+  campaigns: (token: string, params?: { status?: string; page?: number; limit?: number }) => {
+    const search = new URLSearchParams();
+    if (params?.status) search.set("status", params.status);
+    if (params?.page) search.set("page", String(params.page));
+    if (params?.limit) search.set("limit", String(params.limit));
+    const q = search.toString();
+    return apiFetch<PaginatedCampaigns>(`/admin/campaigns${q ? `?${q}` : ""}`, {
+      accessToken: token,
+    });
+  },
+
+  listInvites: (token: string, campaignId: string) =>
+    apiFetch<CampaignInvite[]>(`/admin/campaigns/${campaignId}/invites`, {
+      accessToken: token,
+    }),
+
+  sendInvite: (token: string, campaignId: string, email: string) =>
+    apiFetch<CampaignInvite>(`/admin/campaigns/${campaignId}/invites`, {
+      method: "POST",
+      accessToken: token,
+      body: JSON.stringify({ email }),
+    }),
+
+  revokeInvite: (token: string, campaignId: string, inviteId: string) =>
+    apiFetch<{ revoked: boolean; id: string }>(
+      `/admin/campaigns/${campaignId}/invites/${inviteId}`,
+      { method: "DELETE", accessToken: token },
+    ),
+
+  campaignsCrud: campaignsApi,
+  submissions: submissionsApi,
+  stats: (token: string) =>
+    apiFetch<BrandStats>("/submissions/stats", { accessToken: token }),
+};
+
+/** @deprecated use portalApi */
+export const brandApi = portalApi;

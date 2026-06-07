@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { getWizardEditPath } from "@/features/campaigns/lib/wizard-paths";
 import { cn } from "@/lib/utils";
 import type { Campaign } from "@/lib/api";
 
@@ -142,11 +143,13 @@ type MenuPosition = {
 type CampaignRowActionsProps = {
   campaign: Campaign;
   onMenuAction: (campaign: Campaign, action: CampaignMenuAction) => void;
+  basePath?: string;
 };
 
 export function CampaignRowActions({
   campaign,
   onMenuAction,
+  basePath = "/campaigns",
 }: CampaignRowActionsProps) {
   const menuId = useId();
   const [open, setOpen] = useState(false);
@@ -226,7 +229,7 @@ export function CampaignRowActions({
     >
       {campaign.status === "draft" ? (
         <Link
-          to={`/campaigns/${campaign.id}/edit`}
+          to={getWizardEditPath(campaign.id, basePath.startsWith("/admin"))}
           role="menuitem"
           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-variant"
           onClick={() => setOpen(false)}

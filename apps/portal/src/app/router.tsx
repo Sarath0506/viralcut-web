@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/page-skeletons";
 import { AuthLayout } from "@/routes/AuthLayout";
 import { CampaignWizardLayout } from "@/routes/CampaignWizardLayout";
+import { AdminRoute } from "@/routes/guards/AdminRoute";
+import { BrandRoute } from "@/routes/guards/BrandRoute";
 import { GuestRoute } from "@/routes/guards/GuestRoute";
 import { ProtectedRoute } from "@/routes/guards/ProtectedRoute";
 import { RoleRoute } from "@/routes/guards/RoleRoute";
@@ -18,6 +20,11 @@ import { RootLayout } from "@/routes/RootLayout";
 const LoginPage = lazy(() =>
   import("@/features/auth/pages/LoginPage").then((m) => ({
     default: m.LoginPage,
+  })),
+);
+const AdminLoginPage = lazy(() =>
+  import("@/features/auth/pages/AdminLoginPage").then((m) => ({
+    default: m.AdminLoginPage,
   })),
 );
 const SignupPage = lazy(() =>
@@ -39,6 +46,16 @@ const ResetPasswordPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import("@/features/dashboard/pages/DashboardPage").then((m) => ({
     default: m.DashboardPage,
+  })),
+);
+const AdminDashboardPage = lazy(() =>
+  import("@/features/admin/pages/AdminDashboardPage").then((m) => ({
+    default: m.AdminDashboardPage,
+  })),
+);
+const AdminBrandsPage = lazy(() =>
+  import("@/features/admin/pages/AdminBrandsPage").then((m) => ({
+    default: m.AdminBrandsPage,
   })),
 );
 const CampaignsPage = lazy(() =>
@@ -71,6 +88,11 @@ const CampaignReviewPage = lazy(() =>
     default: m.CampaignReviewPage,
   })),
 );
+const AdminCampaignInvitePage = lazy(() =>
+  import("@/features/admin/pages/AdminCampaignInvitePage").then((m) => ({
+    default: m.AdminCampaignInvitePage,
+  })),
+);
 
 const SubmissionsPage = lazy(() =>
   import("@/features/submissions/pages/SubmissionsPage").then((m) => ({
@@ -98,25 +120,56 @@ const BrandSettingsPage = lazy(() =>
     default: m.BrandSettingsPage,
   })),
 );
-const AcceptInvitePage = lazy(() =>
-  import("@/features/invite/pages/AcceptInvitePage").then((m) => ({
-    default: m.AcceptInvitePage,
-  })),
-);
-const BrandsPage = lazy(() =>
-  import("@/features/agency/pages/BrandsPage").then((m) => ({
-    default: m.BrandsPage,
-  })),
-);
-const BrandNewPage = lazy(() =>
-  import("@/features/agency/pages/BrandNewPage").then((m) => ({
-    default: m.BrandNewPage,
+const AcceptCampaignInvitePage = lazy(() =>
+  import("@/features/invite/pages/AcceptCampaignInvitePage").then((m) => ({
+    default: m.AcceptCampaignInvitePage,
   })),
 );
 
 function withSuspense(fallback: React.ReactNode, element: React.ReactNode) {
   return <Suspense fallback={fallback}>{element}</Suspense>;
 }
+
+const wizardRoutes = [
+  {
+    path: "new",
+    element: withSuspense(
+      <PortalShellSkeleton />,
+      <CampaignNewBasicsPage />,
+    ),
+  },
+  {
+    path: "new/brief",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignBriefPage />),
+  },
+  {
+    path: "new/payout",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignPayoutPage />),
+  },
+  {
+    path: "new/review",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignReviewPage />),
+  },
+  {
+    path: ":id/edit",
+    element: withSuspense(
+      <PortalShellSkeleton />,
+      <CampaignNewBasicsPage />,
+    ),
+  },
+  {
+    path: ":id/edit/brief",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignBriefPage />),
+  },
+  {
+    path: ":id/edit/payout",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignPayoutPage />),
+  },
+  {
+    path: ":id/edit/review",
+    element: withSuspense(<PortalShellSkeleton />, <CampaignReviewPage />),
+  },
+];
 
 export const router = createBrowserRouter([
   {
@@ -134,6 +187,10 @@ export const router = createBrowserRouter([
                 element: withSuspense(null, <LoginPage />),
               },
               {
+                path: "admin/login",
+                element: withSuspense(null, <AdminLoginPage />),
+              },
+              {
                 path: "signup",
                 element: withSuspense(null, <SignupPage />),
               },
@@ -146,8 +203,8 @@ export const router = createBrowserRouter([
                 element: withSuspense(null, <ResetPasswordPage />),
               },
               {
-                path: "invite/accept",
-                element: withSuspense(null, <AcceptInvitePage />),
+                path: "invite/campaign",
+                element: withSuspense(null, <AcceptCampaignInvitePage />),
               },
             ],
           },
@@ -157,147 +214,150 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           {
-            element: <PortalLayout />,
+            element: <BrandRoute />,
             children: [
               {
-                path: "dashboard",
-                element: withSuspense(
-                  <PortalShellSkeleton />,
-                  <DashboardPage />,
-                ),
-              },
-              {
-                element: <RoleRoute allowedRoles={["agency"]} />,
+                element: <PortalLayout />,
                 children: [
                   {
-                    path: "brands",
+                    path: "dashboard",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <BrandsPage />,
+                      <DashboardPage />,
                     ),
                   },
                   {
-                    path: "brands/new",
+                    path: "campaigns",
+                    element: withSuspense(
+                      <CampaignListSkeleton />,
+                      <CampaignsPage />,
+                    ),
+                  },
+                  {
+                    element: <CampaignWizardLayout />,
+                    children: wizardRoutes.map((r) => ({
+                      path: `campaigns/${r.path}`,
+                      element: r.element,
+                    })),
+                  },
+                  {
+                    path: "campaigns/:id",
+                    element: withSuspense(
+                      <DetailPageSkeleton />,
+                      <CampaignDetailPage />,
+                    ),
+                  },
+                  {
+                    path: "submissions",
+                    element: withSuspense(
+                      <TableSkeleton />,
+                      <SubmissionsPage />,
+                    ),
+                  },
+                  {
+                    path: "submissions/:id",
+                    element: withSuspense(
+                      <DetailPageSkeleton />,
+                      <SubmissionReviewPage />,
+                    ),
+                  },
+                  {
+                    path: "analytics",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <BrandNewPage />,
+                      <AnalyticsPage />,
+                    ),
+                  },
+                  {
+                    element: <RoleRoute allowedRoles={["brand"]} />,
+                    children: [
+                      {
+                        path: "billing",
+                        element: withSuspense(
+                          <PortalShellSkeleton />,
+                          <BillingPage />,
+                        ),
+                      },
+                    ],
+                  },
+                  {
+                    path: "settings/brand",
+                    element: withSuspense(
+                      <PortalShellSkeleton />,
+                      <BrandSettingsPage />,
                     ),
                   },
                 ],
               },
+            ],
+          },
+          {
+            element: <AdminRoute />,
+            children: [
               {
-                path: "campaigns",
-                element: withSuspense(
-                  <CampaignListSkeleton />,
-                  <CampaignsPage />,
-                ),
-              },
-              {
-                element: <CampaignWizardLayout />,
+                element: <PortalLayout />,
                 children: [
                   {
-                    path: "campaigns/:id/edit",
+                    path: "admin/dashboard",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <CampaignNewBasicsPage />,
+                      <AdminDashboardPage />,
                     ),
                   },
                   {
-                    path: "campaigns/:id/edit/brief",
+                    path: "admin/brands",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <CampaignBriefPage />,
+                      <AdminBrandsPage />,
                     ),
                   },
                   {
-                    path: "campaigns/:id/edit/payout",
+                    path: "admin/campaigns",
                     element: withSuspense(
-                      <PortalShellSkeleton />,
-                      <CampaignPayoutPage />,
+                      <CampaignListSkeleton />,
+                      <CampaignsPage />,
                     ),
                   },
                   {
-                    path: "campaigns/:id/edit/review",
-                    element: withSuspense(
-                      <PortalShellSkeleton />,
-                      <CampaignReviewPage />,
-                    ),
+                    element: <CampaignWizardLayout />,
+                    children: wizardRoutes.map((r) => ({
+                      path: `admin/campaigns/${r.path}`,
+                      element: r.element,
+                    })),
                   },
-                ],
-              },
-              {
-                path: "campaigns/:id",
-                element: withSuspense(
-                  <DetailPageSkeleton />,
-                  <CampaignDetailPage />,
-                ),
-              },
-              {
-                path: "submissions",
-                element: withSuspense(<TableSkeleton />, <SubmissionsPage />),
-              },
-              {
-                path: "submissions/:id",
-                element: withSuspense(
-                  <DetailPageSkeleton />,
-                  <SubmissionReviewPage />,
-                ),
-              },
-              {
-                path: "analytics",
-                element: withSuspense(
-                  <PortalShellSkeleton />,
-                  <AnalyticsPage />,
-                ),
-              },
-              {
-                element: <RoleRoute allowedRoles={["brand"]} />,
-                children: [
                   {
-                    path: "billing",
+                    path: "admin/campaigns/:id/invite",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <BillingPage />,
-                    ),
-                  },
-                ],
-              },
-              {
-                path: "settings/brand",
-                element: withSuspense(
-                  <PortalShellSkeleton />,
-                  <BrandSettingsPage />,
-                ),
-              },
-              {
-                element: <CampaignWizardLayout />,
-                children: [
-                  {
-                    path: "campaigns/new",
-                    element: withSuspense(
-                      <PortalShellSkeleton />,
-                      <CampaignNewBasicsPage />,
+                      <AdminCampaignInvitePage />,
                     ),
                   },
                   {
-                    path: "campaigns/new/brief",
+                    path: "admin/campaigns/:id",
                     element: withSuspense(
-                      <PortalShellSkeleton />,
-                      <CampaignBriefPage />,
+                      <DetailPageSkeleton />,
+                      <CampaignDetailPage />,
                     ),
                   },
                   {
-                    path: "campaigns/new/payout",
+                    path: "admin/submissions",
                     element: withSuspense(
-                      <PortalShellSkeleton />,
-                      <CampaignPayoutPage />,
+                      <TableSkeleton />,
+                      <SubmissionsPage />,
                     ),
                   },
                   {
-                    path: "campaigns/new/review",
+                    path: "admin/submissions/:id",
+                    element: withSuspense(
+                      <DetailPageSkeleton />,
+                      <SubmissionReviewPage />,
+                    ),
+                  },
+                  {
+                    path: "admin/analytics",
                     element: withSuspense(
                       <PortalShellSkeleton />,
-                      <CampaignReviewPage />,
+                      <AnalyticsPage />,
                     ),
                   },
                 ],

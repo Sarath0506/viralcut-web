@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { agencyApi, brandApi } from "@/lib/api";
+import { portalApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
@@ -26,18 +26,12 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const isAgency = role === "agency";
+  const isAdmin = role === "admin";
 
-  const { data: brandMe } = useQuery({
-    queryKey: ["me", "brand"],
-    queryFn: () => brandApi.me(token!),
-    enabled: Boolean(token && !isAgency),
-  });
-
-  const { data: agencyMe } = useQuery({
-    queryKey: ["me", "agency"],
-    queryFn: () => agencyApi.me(token!),
-    enabled: Boolean(token && isAgency),
+  const { data: me } = useQuery({
+    queryKey: ["me", role],
+    queryFn: () => portalApi.me(token!),
+    enabled: Boolean(token && !isAdmin),
   });
 
   useEffect(() => {
@@ -63,15 +57,11 @@ export function AccountMenu() {
   }, [open]);
 
   const isDark = mounted && (resolvedTheme === "dark" || theme === "dark");
-  const me = isAgency ? agencyMe : brandMe;
-  const label = isAgency
-    ? (agencyMe?.agency?.companyName ??
-      agencyMe?.displayName ??
-      auth?.user.displayName ??
-      "Agency account")
-    : (brandMe?.companyName ??
-      brandMe?.brandProfile?.companyName ??
-      brandMe?.displayName ??
+  const label = isAdmin
+    ? (auth?.user.displayName ?? "Admin")
+    : (me?.companyName ??
+      me?.brandProfile?.companyName ??
+      me?.displayName ??
       auth?.user.displayName ??
       "Brand account");
 
@@ -126,15 +116,17 @@ export function AccountMenu() {
             </p>
           </div>
 
-          <Link
-            to="/settings/brand"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-surface-variant"
-            onClick={() => setOpen(false)}
-          >
-            <Settings className="size-4 text-muted" />
-            Settings
-          </Link>
+          {!isAdmin ? (
+            <Link
+              to="/settings/brand"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-surface-variant"
+              onClick={() => setOpen(false)}
+            >
+              <Settings className="size-4 text-muted" />
+              Settings
+            </Link>
+          ) : null}
 
           <button
             type="button"

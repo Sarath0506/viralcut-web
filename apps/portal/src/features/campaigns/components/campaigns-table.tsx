@@ -14,21 +14,33 @@ import type { Campaign } from "@/lib/api";
 type CampaignsTableProps = {
   campaigns: Campaign[];
   onMenuAction: (campaign: Campaign, action: CampaignMenuAction) => void;
+  isAdmin?: boolean;
+  basePath?: string;
+  isRefreshing?: boolean;
 };
 
-export function CampaignsTable({ campaigns, onMenuAction }: CampaignsTableProps) {
+export function CampaignsTable({
+  campaigns,
+  onMenuAction,
+  isAdmin = false,
+  basePath = "/campaigns",
+  isRefreshing = false,
+}: CampaignsTableProps) {
   const navigate = useNavigate();
 
   const openCampaign = (id: string) => {
-    navigate(`/campaigns/${id}`);
+    navigate(`${basePath}/${id}`);
   };
 
   return (
-    <div className="overflow-x-auto overflow-y-visible">
+    <div
+      className={`overflow-x-auto overflow-y-visible ${isRefreshing ? "opacity-70" : ""}`}
+    >
       <table className="w-full min-w-[880px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
             <th className="px-4 py-3">Campaign</th>
+            {isAdmin ? <th className="px-4 py-3">Brand</th> : null}
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">CPV Rate</th>
             <th className="px-4 py-3">Budget Cap</th>
@@ -64,6 +76,13 @@ export function CampaignsTable({ campaigns, onMenuAction }: CampaignsTableProps)
                   </span>
                 </div>
               </td>
+              {isAdmin ? (
+                <td className="px-4 py-3 text-muted-foreground">
+                  {campaign.brandCompanyName ??
+                    campaign.pendingInviteEmail ??
+                    "Unassigned"}
+                </td>
+              ) : null}
               <td className="px-4 py-3">
                 <StatusPill status={campaign.status} />
               </td>
@@ -96,6 +115,7 @@ export function CampaignsTable({ campaigns, onMenuAction }: CampaignsTableProps)
                 <CampaignRowActions
                   campaign={campaign}
                   onMenuAction={onMenuAction}
+                  basePath={basePath}
                 />
               </td>
             </tr>

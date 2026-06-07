@@ -40,6 +40,8 @@ export function campaignToDraft(campaign: Campaign): CampaignDraft {
 
   return {
     campaignId: campaign.id,
+    ownership: campaign.ownership,
+    inviteAcceptedAt: campaign.inviteAcceptedAt,
     title: campaign.title,
     category: campaign.category ?? "",
     platforms,

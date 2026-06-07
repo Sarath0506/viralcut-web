@@ -15,11 +15,13 @@ import {
   formatEstimatedViews,
 } from "@/features/campaigns/lib/estimate-views";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
+import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 
 export function CampaignPayoutPage() {
   const navigate = useNavigate();
-  const { draft, paths, update } = useCampaignWizard();
+  const { goBack, backLabel } = useWizardBack();
+  const { draft, paths, update, saveNow } = useCampaignWizard();
   const { toast } = useToast();
   const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
   const rate = Number(draft.ratePer1kRupees);
@@ -141,8 +143,8 @@ export function CampaignPayoutPage() {
         <CampaignWizardFooter
           leftAction={{
             id: "back",
-            label: "Back",
-            onClick: () => navigate(-1),
+            label: backLabel,
+            onClick: goBack,
             buttonProps: { size: "sm", variant: "outline" },
           }}
           rightActions={[
@@ -155,7 +157,9 @@ export function CampaignPayoutPage() {
             {
               id: "next",
               label: "Next",
-              onClick: () => navigate(paths.review),
+              onClick: () => {
+                void saveNow("review").then(() => navigate(paths.review));
+              },
               icon: <ArrowRight className="h-4 w-4" />,
               buttonProps: { size: "sm", disabled: !canContinue },
             },

@@ -2,29 +2,21 @@ import { ArrowRight, Mail } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPasswordField } from "@/components/auth/auth-password-field";
 import { AuthPrimaryButton } from "@/components/auth/auth-primary-button";
-import {
-  authFooterLinkClass,
-  authFormClass,
-  authMutedFooterClass,
-} from "@/components/auth/auth-styles";
+import { authFormClass } from "@/components/auth/auth-styles";
 import { AuthTextField } from "@/components/auth/auth-text-field";
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import {
   AuthMobileBrandMark,
   AuthPageHeader,
   AuthSplitLayout,
-  AuthTrustBadges,
 } from "@/components/layout/auth-split-layout";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/providers/auth-provider";
 
-export function LoginPage() {
+export function AdminLoginPage() {
   const [searchParams] = useSearchParams();
   const redirectTo = safeRedirectPath(searchParams.get("next"));
   const { login } = useAuth();
@@ -37,7 +29,7 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password, "brand", redirectTo);
+      await login(email, password, "admin", redirectTo);
       toast("Welcome back!");
     } catch (err) {
       toast(
@@ -49,19 +41,13 @@ export function LoginPage() {
     }
   }
 
-  function onGoogleSignIn() {
-    toast("Google sign-in is coming soon.", "error");
-  }
-
   return (
-    <AuthSplitLayout heroVariant="login" footer={<AuthTrustBadges />}>
+    <AuthSplitLayout heroVariant="login">
       <AuthMobileBrandMark />
-
       <AuthPageHeader
-        title="Welcome Back"
-        description="Log in to manage your creator campaigns and performance metrics."
+        title="Admin sign in"
+        description="Sign in to manage all brands and campaigns."
       />
-
       <form onSubmit={onSubmit} className={authFormClass}>
         <AuthTextField
           id="email"
@@ -73,27 +59,13 @@ export function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium">
-              Password
-            </Label>
-            <Link
-              to="/forgot-password"
-              className="text-xs font-semibold text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <AuthPasswordField
-            id="password"
-            label=""
-            hideLabel
-            value={password}
-            onChange={setPassword}
-            required
-          />
-        </div>
+        <AuthPasswordField
+          id="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          required
+        />
         <AuthPrimaryButton
           loading={loading}
           trailingIcon={<ArrowRight className="size-4" />}
@@ -101,20 +73,10 @@ export function LoginPage() {
           Sign in
         </AuthPrimaryButton>
       </form>
-
-      <AuthDivider label="or" />
-      <GoogleSignInButton onClick={onGoogleSignIn} />
-
-      <p className={authMutedFooterClass}>
-        New brand?{" "}
-        <Link to="/signup" className={authFooterLinkClass}>
-          Create account
-        </Link>
-      </p>
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        Admin?{" "}
-        <Link to="/admin/login" className="font-medium text-primary hover:underline">
-          Admin login
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Brand account?{" "}
+        <Link to="/login" className="font-medium text-primary hover:underline">
+          Brand login
         </Link>
       </p>
     </AuthSplitLayout>

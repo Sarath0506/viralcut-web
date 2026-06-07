@@ -1,10 +1,9 @@
 import { Building2, Mail, User } from "lucide-react";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { AuthPasswordField } from "@/components/auth/auth-password-field";
 import { AuthPrimaryButton } from "@/components/auth/auth-primary-button";
-import { PortalToggle } from "@/components/auth/portal-toggle";
 import {
   authFooterLinkClass,
   authFormClass,
@@ -19,16 +18,11 @@ import {
 } from "@/components/layout/auth-split-layout";
 import { useToast } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api";
-import type { Portal } from "@/lib/portal";
-import { parsePortal } from "@/lib/portal";
 import { useAuth } from "@/providers/auth-provider";
 
 export function SignupPage() {
-  const [searchParams] = useSearchParams();
-  const initialPortal = parsePortal(searchParams.get("portal"));
   const { register } = useAuth();
   const { toast } = useToast();
-  const [portal, setPortal] = useState<Portal>(initialPortal);
   const [form, setForm] = useState({
     companyName: "",
     displayName: "",
@@ -38,8 +32,6 @@ export function SignupPage() {
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const isAgency = portal === "agency";
 
   function updateField<K extends keyof typeof form>(
     key: K,
@@ -63,16 +55,13 @@ export function SignupPage() {
 
     setLoading(true);
     try {
-      await register(
-        {
-          email: form.email,
-          password: form.password,
-          companyName: form.companyName,
-          displayName: form.displayName.trim() || undefined,
-          acceptTerms: true,
-        },
-        portal,
-      );
+      await register({
+        email: form.email,
+        password: form.password,
+        companyName: form.companyName,
+        displayName: form.displayName.trim() || undefined,
+        acceptTerms: true,
+      });
       toast("Account created!");
     } catch (err) {
       toast(
@@ -90,23 +79,17 @@ export function SignupPage() {
 
       <AuthPageHeader
         title="Sign up"
-        description={
-          isAgency
-            ? "Create your agency account to manage client brands and campaigns."
-            : "Create your brand account to post campaigns and review creator clips."
-        }
+        description="Create your brand account to post campaigns and review creator clips."
       />
-
-      <PortalToggle value={portal} onChange={setPortal} className="mb-4" />
 
       <form onSubmit={onSubmit} className={authFormClass}>
         <div className="grid gap-4 sm:grid-cols-2">
           <AuthTextField
             id="company"
-            label={isAgency ? "Agency name" : "Company name"}
+            label="Company name"
             icon={Building2}
             autoComplete="organization"
-            placeholder={isAgency ? "Your agency" : "Your company"}
+            placeholder="Your company"
             value={form.companyName}
             onChange={(e) => updateField("companyName", e.target.value)}
             required
@@ -164,7 +147,7 @@ export function SignupPage() {
           <span className="text-sm leading-snug text-muted">
             I agree to the{" "}
             <span className="font-semibold text-primary">Terms of Service</span>
-            {isAgency ? " and Agency Guidelines." : " and Brand Guidelines."}
+            {" "}and Brand Guidelines.
           </span>
         </label>
 
@@ -175,10 +158,7 @@ export function SignupPage() {
 
       <p className={authMutedFooterClass}>
         Already have an account?{" "}
-        <Link
-          to={`/login?portal=${portal}`}
-          className={authFooterLinkClass}
-        >
+        <Link to="/login" className={authFooterLinkClass}>
           Sign in
         </Link>
       </p>

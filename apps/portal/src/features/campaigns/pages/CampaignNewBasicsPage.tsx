@@ -20,6 +20,7 @@ import {
 } from "@/features/campaigns/components/campaign-wizard-layout";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
+import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { normalizeUploadUrl, resolveMediaUrl } from "@/lib/media-url";
 import { ApiError, brandApi } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
@@ -41,7 +42,8 @@ const MAX_COVER_BYTES = 3 * 1024 * 1024;
 
 export function CampaignNewBasicsPage() {
   const navigate = useNavigate();
-  const { draft, paths, update } = useCampaignWizard();
+  const { draft, paths, update, saveNow } = useCampaignWizard();
+  const { goBack, backLabel } = useWizardBack();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
@@ -311,9 +313,9 @@ export function CampaignNewBasicsPage() {
         </div>
         <CampaignWizardFooter
           leftAction={{
-            id: "cancel",
-            label: "Cancel",
-            onClick: () => navigate("/campaigns"),
+            id: "back",
+            label: backLabel,
+            onClick: goBack,
             buttonProps: { size: "sm", variant: "outline" },
           }}
           rightActions={[
@@ -326,7 +328,9 @@ export function CampaignNewBasicsPage() {
             {
               id: "next",
               label: "Next",
-              onClick: () => navigate(paths.brief),
+              onClick: () => {
+                void saveNow("brief").then(() => navigate(paths.brief));
+              },
               icon: <ArrowRight className="h-4 w-4" />,
               buttonProps: {
                 size: "sm",

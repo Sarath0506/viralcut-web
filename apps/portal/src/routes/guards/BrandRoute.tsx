@@ -1,17 +1,18 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-import { PortalShellSkeleton } from "@/components/ui/page-skeletons";
 import { useAuth } from "@/providers/auth-provider";
 
-export function ProtectedRoute() {
+export function BrandRoute() {
   const { auth, isLoading } = useAuth();
 
-  if (isLoading) {
-    return <PortalShellSkeleton />;
-  }
+  if (isLoading) return null;
 
   if (!auth) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (auth.user.role === "admin") {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <Outlet />;

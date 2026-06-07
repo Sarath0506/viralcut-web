@@ -43,7 +43,7 @@ export function Sidebar({
         <div className="flex shrink-0 items-start justify-between px-4 pt-6 pb-3">
           <div>
             <Link
-              to="/dashboard"
+              to={role === "admin" ? "/admin/dashboard" : "/dashboard"}
               onClick={onClose}
               className="font-display text-xl font-extrabold tracking-tight text-primary"
             >

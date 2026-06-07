@@ -1,14 +1,14 @@
 import { Outlet } from "react-router-dom";
 
 import { AuthProvider } from "@/providers/auth-provider";
-import { SelectedBrandProvider } from "@/providers/selected-brand-provider";
+import { RealtimeProvider } from "@/providers/realtime-provider";
 
 export function RootLayout() {
   return (
     <AuthProvider>
-      <SelectedBrandProvider>
+      <RealtimeProvider>
         <Outlet />
-      </SelectedBrandProvider>
+      </RealtimeProvider>
     </AuthProvider>
   );
 }
