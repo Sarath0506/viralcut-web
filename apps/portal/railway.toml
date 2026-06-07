@@ -1,10 +1,12 @@
-# Railway config for @viralcut/portal (monorepo).
+# Railway — @viralcut/portal
 #
-# Service settings (Railway dashboard):
-#   Source: GitHub repo, branch main
+# Dashboard:
+#   New Service → GitHub Repo → Sarath0506/viralcut-web
 #   Root Directory: /
-#   Config file path: /apps/portal/railway.toml
-#   Variables: VITE_API_URL = your API public URL
+#   Config file: /apps/portal/railway.toml
+#
+# Variables (set BEFORE first deploy — Vite bakes this at build time):
+#   VITE_API_URL = https://<api-service>.up.railway.app
 
 [build]
 builder = "NIXPACKS"
