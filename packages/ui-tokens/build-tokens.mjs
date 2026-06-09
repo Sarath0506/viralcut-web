@@ -28,21 +28,56 @@ const outWeb = join(__dirname, "dist", "web.css");
 mkdirSync(dirname(outWeb), { recursive: true });
 writeFileSync(outWeb, webCss);
 
-const flutterColors = Object.entries(tokens.color)
+const colorKeys = Object.keys(tokens.color);
+
+function toDartColor(hex) {
+  return `Color(${hex.replace("#", "0xFF")})`;
+}
+
+const flutterColorFields = Object.entries(tokens.color)
   .map(([key, value]) => {
-    const camel = key.replace(/Variant/g, "Variant");
-    const light = value.light.replace("#", "0xFF");
-    const dark = value.dark.replace("#", "0xFF");
-    return `  static const ${camel}Light = Color(${light});\n  static const ${camel}Dark = Color(${dark});`;
+    const light = toDartColor(value.light);
+    const dark = toDartColor(value.dark);
+    return `  static const ${key}Light = ${light};\n  static const ${key}Dark = ${dark};`;
   })
+  .join("\n");
+
+const resolveCases = colorKeys
+  .map(
+    (key) =>
+      `      '${key}' => brightness == Brightness.dark ? ${key}Dark : ${key}Light,`,
+  )
+  .join("\n");
+
+const radiusFields = Object.entries(tokens.radius)
+  .map(([key, value]) => `  static const ${key} = ${value}.0;`)
   .join("\n");
 
 const flutterDart = `// Generated from packages/ui-tokens/tokens.json — do not edit by hand
 import 'package:flutter/material.dart';
 
 abstract final class ViralCutTokenColors {
-${flutterColors}
-  static const deepSurface = deepSurfaceDark;
+${flutterColorFields}
+
+  /// Resolves a token [name] for the given [brightness].
+  static Color resolve(Brightness brightness, String name) {
+    return switch (name) {
+${resolveCases}
+      _ => throw ArgumentError('Unknown color token: \$name'),
+    };
+  }
+
+  static Color forBrightness(Brightness brightness, Color light, Color dark) =>
+      brightness == Brightness.dark ? dark : light;
+}
+
+abstract final class ViralCutTokenRadius {
+${radiusFields}
+}
+
+abstract final class ViralCutTokenFonts {
+  static const sans = '${tokens.font.sans}';
+  static const display = '${tokens.font.display}';
 }
 `;
 

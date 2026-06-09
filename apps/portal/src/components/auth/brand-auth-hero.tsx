@@ -39,7 +39,7 @@ const SIGNUP_FEATURES: {
 
 const AVATAR_COLORS = [
   "bg-violet-400",
-  "bg-emerald-400",
+  "bg-money-bright",
   "bg-amber-400",
 ] as const;
 
@@ -117,7 +117,7 @@ export function BrandAuthHero({ variant }: { variant: BrandAuthHeroVariant }) {
                   />
                 ))}
               </div>
-              <div className="flex items-center gap-0.5 rounded-full bg-emerald-300 px-2 py-0.5 text-[9px] font-bold text-emerald-950">
+              <div className="flex items-center gap-0.5 rounded-full bg-money-bright px-2 py-0.5 text-[9px] font-bold text-deep">
                 <TrendingUp className="size-2.5" aria-hidden />
                 +124%
               </div>

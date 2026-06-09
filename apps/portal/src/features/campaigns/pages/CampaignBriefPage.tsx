@@ -118,18 +118,16 @@ export function CampaignBriefPage() {
 
           <Card className="h-fit self-start">
             <CardTitle>Creative Brief</CardTitle>
-            <div className="mt-4 space-y-4">
-              <RulePointsEditor
-                variant="hook"
-                title="The Hook (first 3 seconds)"
-                description="Add each opening idea as its own point."
-                addLabel="Add hook point"
-                placeholder="e.g. Open with a bold question about the product"
-                emptyHint="No hook points yet. Add how creators should start the video."
-                value={draft.briefHook}
-                onChange={(briefHook) => update({ briefHook })}
-              />
-            </div>
+            <p className="mt-1 text-xs text-muted">
+              Describe the creative direction, hook, tone, and key messaging for
+              creators.
+            </p>
+            <textarea
+              className="mt-4 min-h-[220px] w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted/70 outline-none ring-0 transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              placeholder="e.g. Open with a bold question in the first 3 seconds. Keep the tone energetic and youth-focused. Highlight the product benefit clearly before the 10-second mark."
+              value={draft.briefHook}
+              onChange={(e) => update({ briefHook: e.target.value })}
+            />
           </Card>
         </div>
         <CampaignWizardFooter

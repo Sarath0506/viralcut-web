@@ -34,12 +34,27 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     });
 
+    const invalidateSubmissions = () => {
+      void queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      void queryClient.invalidateQueries({ queryKey: ["submission"] });
+      void queryClient.invalidateQueries({ queryKey: ["stats"] });
+    };
+
+    socket.on("deliverable:submitted", invalidateSubmissions);
+    socket.on("deliverable:reviewed", invalidateSubmissions);
+    socket.on("deliverable:live_proof", invalidateSubmissions);
+    socket.on("participation:joined", invalidateSubmissions);
+
     return () => {
       socket.off("campaign:created", invalidateCampaigns);
       socket.off("campaign:updated", invalidateCampaigns);
       socket.off("campaign:published", invalidateCampaigns);
       socket.off("campaignInvite:sent", invalidateCampaigns);
       socket.off("campaignInvite:accepted");
+      socket.off("deliverable:submitted", invalidateSubmissions);
+      socket.off("deliverable:reviewed", invalidateSubmissions);
+      socket.off("deliverable:live_proof", invalidateSubmissions);
+      socket.off("participation:joined", invalidateSubmissions);
       disconnectSocket();
     };
   }, [auth, getToken, queryClient]);

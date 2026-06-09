@@ -7,60 +7,62 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useToast } from "@/components/ui/toaster";
+import { formatPlatformLabel } from "@/features/campaigns/lib/platform-labels";
 import { useSubmission } from "@/features/submissions/hooks/use-submissions";
-import { ApiError, brandApi } from "@/lib/api";
-import { useAuth } from "@/providers/auth-provider";
+import { submissionsListPath } from "@/features/submissions/lib/submissions-paths";
+import { ApiError, portalApi } from "@/lib/api";
+import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
 export function SubmissionReviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getToken } = useAuth();
+  const role = usePortalRole();
   const token = getToken();
+  const submissionsPath = submissionsListPath(role);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [rejectReason, setRejectReason] = useState("");
 
-  const { data: submission, isPending } = useSubmission(id);
+  const { data: deliverable, isPending } = useSubmission(id);
 
   const reviewMutation = useMutation({
     mutationFn: (body: { action: "approve" | "reject"; rejectionReason?: string }) =>
-      brandApi.submissions.review(token!, id!, body),
+      portalApi.submissions.review(token!, id!, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["submissions"] });
-      toast("Submission updated");
-      navigate("/submissions");
+      toast("Deliverable updated");
+      navigate(submissionsPath);
     },
     onError: (err) => {
       toast(err instanceof ApiError ? err.message : "Review failed", "error");
     },
   });
 
-  if (isPending || !submission) {
+  if (isPending || !deliverable) {
     return <DetailPageSkeleton />;
   }
 
-  const s = submission as Record<string, unknown>;
-  const canReview =
-    s.status === "draft_submitted" || s.status === "under_review";
+  const canReview = deliverable.status === "under_review";
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <CardTitle>Creative</CardTitle>
+        <CardTitle>
+          {formatPlatformLabel(deliverable.platform)} draft
+        </CardTitle>
         <div className="mt-4 space-y-3 text-sm">
           <div className="flex items-center gap-2">
-            <StatusPill status={String(s.status)} />
-            <span className="text-muted">
-              {(s.campaign as { title?: string })?.title}
-            </span>
+            <StatusPill status={deliverable.status} />
+            <span className="text-muted">{deliverable.campaign.title}</span>
           </div>
           <p>
             <span className="text-muted">Creator: </span>
-            {(s.creator as { displayName?: string })?.displayName ?? "—"}
+            {deliverable.creator.displayName ?? deliverable.creator.username ?? "—"}
           </p>
-          {Boolean(s.draftDriveUrl) && (
+          {deliverable.draftDriveUrl && (
             <a
-              href={String(s.draftDriveUrl)}
+              href={deliverable.draftDriveUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
@@ -68,59 +70,76 @@ export function SubmissionReviewPage() {
               Open draft (Drive)
             </a>
           )}
-          {Boolean(s.liveReelUrl) && (
+          {deliverable.livePostUrl && (
             <a
-              href={String(s.liveReelUrl)}
+              href={deliverable.livePostUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              View live reel
+              View live post
             </a>
           )}
         </div>
       </Card>
 
-      <Card>
-        <CardTitle>Decision</CardTitle>
-        <p className="mt-2 text-sm text-muted">
-          Approve draft so creator can post and submit live reel link.
-        </p>
-        {canReview ? (
-          <div className="mt-4 space-y-4">
-            <Button
-              className="w-full"
-              onClick={() => reviewMutation.mutate({ action: "approve" })}
-              disabled={reviewMutation.isPending}
-            >
-              Approve creative
-            </Button>
-            <textarea
-              className="min-h-[80px] w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm"
-              placeholder="Rejection reason (required to reject)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() =>
-                reviewMutation.mutate({
-                  action: "reject",
-                  rejectionReason: rejectReason,
-                })
-              }
-              disabled={reviewMutation.isPending || !rejectReason.trim()}
-            >
-              Reject
-            </Button>
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted">
-            This submission is not in a reviewable state.
+      <div className="space-y-6">
+        <Card>
+          <CardTitle>Other formats (same creator)</CardTitle>
+          <ul className="mt-4 space-y-2 text-sm">
+            {deliverable.siblingDeliverables.map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+              >
+                <span>{formatPlatformLabel(s.platform)}</span>
+                <StatusPill status={s.status} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card>
+          <CardTitle>Decision</CardTitle>
+          <p className="mt-2 text-sm text-muted">
+            Approve this format only. Creator can then post and submit live proof.
           </p>
-        )}
-      </Card>
+          {canReview ? (
+            <div className="mt-4 space-y-4">
+              <Button
+                className="w-full"
+                onClick={() => reviewMutation.mutate({ action: "approve" })}
+                disabled={reviewMutation.isPending}
+              >
+                Approve {formatPlatformLabel(deliverable.platform)}
+              </Button>
+              <textarea
+                className="min-h-[80px] w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm"
+                placeholder="Rejection reason (required to reject)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() =>
+                  reviewMutation.mutate({
+                    action: "reject",
+                    rejectionReason: rejectReason,
+                  })
+                }
+                disabled={reviewMutation.isPending || !rejectReason.trim()}
+              >
+                Reject {formatPlatformLabel(deliverable.platform)}
+              </Button>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted">
+              This deliverable is not in a reviewable state.
+            </p>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

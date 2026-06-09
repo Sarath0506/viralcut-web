@@ -294,6 +294,48 @@ export type SubmissionListItem = {
   submittedAt: string;
 };
 
+export type DeliverableListItem = {
+  id: string;
+  platform: string;
+  status: string;
+  draftDriveUrl: string | null;
+  draftSubmittedAt: string | null;
+  campaignId: string;
+  campaignTitle: string;
+  participationId: string;
+  creatorName: string;
+  siblingDeliverables: Array<{
+    id: string;
+    platform: string;
+    status: string;
+  }>;
+};
+
+export type DeliverableDetail = {
+  id: string;
+  platform: string;
+  status: string;
+  draftDriveUrl: string | null;
+  livePostUrl: string | null;
+  rejectionReason: string | null;
+  draftSubmittedAt: string | null;
+  participationId: string;
+  campaign: { id: string; title: string; ratePer1kDisplay: string };
+  creator: {
+    id: string;
+    displayName: string | null;
+    username: string | null;
+    phone: string | null;
+  };
+  siblingDeliverables: Array<{
+    id: string;
+    platform: string;
+    status: string;
+    draftDriveUrl: string | null;
+    rejectionReason: string | null;
+  }>;
+};
+
 export type BrandStats = {
   liveCampaigns: number;
   pendingReviews: number;
@@ -403,12 +445,15 @@ const submissionsApi = {
     if (params?.status) search.set("status", params.status);
     if (params?.campaignId) search.set("campaignId", params.campaignId);
     const q = search.toString();
-    return apiFetch<SubmissionListItem[]>(`/submissions${q ? `?${q}` : ""}`, {
-      accessToken: token,
-    });
+    return apiFetch<DeliverableListItem[]>(
+      `/submissions/deliverables${q ? `?${q}` : ""}`,
+      {
+        accessToken: token,
+      },
+    );
   },
   get: (token: string, id: string) =>
-    apiFetch<Record<string, unknown>>(`/submissions/${id}`, {
+    apiFetch<DeliverableDetail>(`/submissions/deliverables/${id}`, {
       accessToken: token,
     }),
   review: (
@@ -416,11 +461,14 @@ const submissionsApi = {
     id: string,
     body: { action: "approve" | "reject"; rejectionReason?: string },
   ) =>
-    apiFetch<{ id: string; status: string }>(`/submissions/${id}/review`, {
-      method: "PATCH",
-      accessToken: token,
-      body: JSON.stringify(body),
-    }),
+    apiFetch<{ id: string; status: string }>(
+      `/submissions/deliverables/${id}/review`,
+      {
+        method: "PATCH",
+        accessToken: token,
+        body: JSON.stringify(body),
+      },
+    ),
 };
 
 export const portalApi = {

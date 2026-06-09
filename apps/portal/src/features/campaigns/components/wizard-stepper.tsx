@@ -32,7 +32,7 @@ export function WizardStepper() {
             className={cn(
               "relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors",
               completed
-                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                ? "border-money bg-money/10 text-money"
                 : active
                   ? "border-primary bg-primary text-primary-foreground"
                   : reachable
@@ -68,7 +68,7 @@ export function WizardStepper() {
               <span
                 className={cn(
                   "absolute top-4 right-1/2 h-px w-1/2",
-                  completed || active ? "bg-emerald-500" : "bg-border",
+                  completed || active ? "bg-money" : "bg-border",
                 )}
               />
             )}
@@ -76,7 +76,7 @@ export function WizardStepper() {
               <span
                 className={cn(
                   "absolute top-4 left-1/2 h-px w-1/2",
-                  i < currentIndex ? "bg-emerald-500" : "bg-border",
+                  i < currentIndex ? "bg-money" : "bg-border",
                 )}
               />
             )}

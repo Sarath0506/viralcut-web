@@ -33,7 +33,6 @@ export function CampaignReviewPage() {
     useCampaignDraftSave();
 
   const invalidAssets = hasInvalidReferenceAssets(draft.referenceAssets);
-  const hookPoints = useMemo(() => parseRulePoints(draft.briefHook), [draft.briefHook]);
   const doPoints = useMemo(() => parseRulePoints(draft.doRules), [draft.doRules]);
   const avoidPoints = useMemo(
     () => parseRulePoints(draft.avoidRules),
@@ -124,32 +123,27 @@ export function CampaignReviewPage() {
               </button>
             </div>
             <div className="grid gap-4 text-sm sm:grid-cols-2">
-              <div>
+              <div className="sm:col-span-2">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-                  The hook
+                  Creative brief
                 </p>
-                {hookPoints.length > 0 ? (
-                  <ul className="space-y-1.5 text-foreground">
-                    {hookPoints.map((point) => (
-                      <li key={point.id} className="flex gap-2">
-                        <span className="text-primary">•</span>
-                        <span>{point.text}</span>
-                      </li>
-                    ))}
-                  </ul>
+                {draft.briefHook.trim() ? (
+                  <p className="whitespace-pre-wrap text-foreground">
+                    {draft.briefHook.trim()}
+                  </p>
                 ) : (
                   <p className="text-muted">-</p>
                 )}
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-money">
                   Things to do
                 </p>
                 {doPoints.length > 0 ? (
                   <ul className="space-y-1.5 text-foreground">
                     {doPoints.map((point) => (
                       <li key={point.id} className="flex gap-2">
-                        <span className="text-emerald-400">•</span>
+                        <span className="text-money">•</span>
                         <span>{point.text}</span>
                       </li>
                     ))}

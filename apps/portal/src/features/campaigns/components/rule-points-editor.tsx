@@ -24,12 +24,12 @@ type RulePointsEditorProps = {
 const variantStyles = {
   do: {
     icon: CheckCircle2,
-    accent: "text-emerald-400",
-    border: "border-emerald-500/30",
-    headerBg: "bg-emerald-500/10",
-    dot: "bg-emerald-400",
-    inputFocus: "focus:border-emerald-500/50 focus:ring-emerald-500/20",
-    addButton: "border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10",
+    accent: "text-money",
+    border: "border-money/30",
+    headerBg: "bg-money/10",
+    dot: "bg-money",
+    inputFocus: "focus:border-money/50 focus:ring-money/20",
+    addButton: "border-money/30 text-money hover:bg-money/10",
   },
   avoid: {
     icon: AlertTriangle,

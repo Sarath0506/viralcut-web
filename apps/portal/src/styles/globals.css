@@ -12,6 +12,9 @@
   --color-border: var(--vc-border);
   --color-money: var(--vc-money);
   --color-money-bright: var(--vc-money-bright);
+  --color-muted-foreground: var(--vc-muted);
+  --color-primary-variant: var(--vc-primary-variant);
+  --color-on-surface: var(--vc-on-surface);
   --color-destructive: var(--vc-error);
   --color-warning: var(--vc-warning);
   --color-deep: var(--vc-deep-surface);
@@ -49,16 +52,16 @@
 
 @layer utilities {
   .brand-login-gradient {
-    background-color: #4800a0;
+    background-color: var(--vc-primary);
     background-image:
-      radial-gradient(at 0% 0%, hsl(263 88% 45%) 0, transparent 50%),
-      radial-gradient(at 50% 0%, hsl(272 81% 57%) 0, transparent 50%),
-      radial-gradient(at 100% 0%, hsl(220 78% 32%) 0, transparent 50%);
+      radial-gradient(at 0% 0%, var(--vc-primary-variant) 0, transparent 50%),
+      radial-gradient(at 50% 0%, var(--vc-primary) 0, transparent 50%),
+      radial-gradient(at 100% 0%, var(--vc-deep-surface) 0, transparent 50%);
   }
 
   .brand-login-glass {
-    background: rgba(255, 255, 255, 0.8);
+    background: color-mix(in srgb, var(--vc-surface) 80%, transparent);
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(226, 232, 240, 0.5);
+    border: 1px solid color-mix(in srgb, var(--vc-border) 50%, transparent);
   }
 }
