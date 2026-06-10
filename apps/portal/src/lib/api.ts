@@ -294,6 +294,14 @@ export type SubmissionListItem = {
   submittedAt: string;
 };
 
+export type RejectionHistoryEvent = {
+  id: string;
+  rejectionReason: string;
+  draftDriveUrl: string;
+  rejectedAt: string;
+  reviewedByDisplayName: string | null;
+};
+
 export type DeliverableListItem = {
   id: string;
   platform: string;
@@ -304,6 +312,7 @@ export type DeliverableListItem = {
   campaignTitle: string;
   participationId: string;
   creatorName: string;
+  priorRejectionCount: number;
   siblingDeliverables: Array<{
     id: string;
     platform: string;
@@ -320,6 +329,7 @@ export type DeliverableDetail = {
   rejectionReason: string | null;
   draftSubmittedAt: string | null;
   participationId: string;
+  rejectionHistory: RejectionHistoryEvent[];
   campaign: { id: string; title: string; ratePer1kDisplay: string };
   creator: {
     id: string;

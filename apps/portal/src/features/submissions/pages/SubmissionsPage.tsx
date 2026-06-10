@@ -48,6 +48,11 @@ export function SubmissionsPage() {
                   <p className="font-semibold">{s.campaignTitle}</p>
                   <p className="text-sm text-muted">
                     {s.creatorName} · {formatPlatformLabel(s.platform)}
+                    {s.priorRejectionCount > 0 && (
+                      <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">
+                        Resubmission
+                      </span>
+                    )}
                   </p>
                 </div>
                 <StatusPill status={s.status} />
@@ -91,6 +96,11 @@ export function SubmissionsPage() {
                       <span className="rounded-full bg-surface-variant px-2 py-0.5 text-[11px] font-semibold">
                         {formatPlatformLabel(s.platform)}
                       </span>
+                      {s.priorRejectionCount > 0 && (
+                        <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-semibold text-warning">
+                          Resubmission
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={s.status} />
