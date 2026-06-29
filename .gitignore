@@ -1,8 +1,40 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
 .turbo/
 *.tsbuildinfo
 packages/ui-tokens/dist/
-apps/portal/.env
-apps/portal/.env.local
+apps/*/dist/
+
+# Vite
+.vite/
+
+# Environment & secrets
 .env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+.vitest/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
