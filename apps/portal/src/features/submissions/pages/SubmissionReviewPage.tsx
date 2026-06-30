@@ -11,7 +11,7 @@ import { formatPlatformLabel } from "@/features/campaigns/lib/platform-labels";
 import { useSubmission } from "@/features/submissions/hooks/use-submissions";
 import { isDuplicateRejectionReason } from "@/features/submissions/lib/rejection-reason";
 import { submissionsListPath } from "@/features/submissions/lib/submissions-paths";
-import { ApiError, portalApi } from "@/lib/api";
+import { adminApi, ApiError, portalApi } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
 function formatRejectedAt(iso: string): string {
@@ -31,6 +31,7 @@ export function SubmissionReviewPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [rejectReason, setRejectReason] = useState("");
+  const [proofRejectReason, setProofRejectReason] = useState("");
 
   const { data: deliverable, isPending } = useSubmission(id);
 
@@ -44,6 +45,30 @@ export function SubmissionReviewPage() {
     },
     onError: (err) => {
       toast(err instanceof ApiError ? err.message : "Review failed", "error");
+    },
+  });
+
+  const approveProofMutation = useMutation({
+    mutationFn: () => adminApi.approveProof(token!, id!),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      toast("Proof approved — creator can now see their earnings");
+      navigate(submissionsPath);
+    },
+    onError: (err) => {
+      toast(err instanceof ApiError ? err.message : "Approval failed", "error");
+    },
+  });
+
+  const rejectProofMutation = useMutation({
+    mutationFn: (reason: string) => adminApi.rejectProof(token!, id!, reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      toast("Proof rejected — creator will be notified");
+      navigate(submissionsPath);
+    },
+    onError: (err) => {
+      toast(err instanceof ApiError ? err.message : "Rejection failed", "error");
     },
   });
 
@@ -61,13 +86,18 @@ export function SubmissionReviewPage() {
   }
 
   const canReview = deliverable.status === "under_review";
+  const isProofUnderReview =
+    (deliverable.status === "proof_under_review" ||
+      deliverable.status === "live_submitted") &&
+    role === "admin";
   const history = deliverable.rejectionHistory;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardTitle>
-          {formatPlatformLabel(deliverable.platform)} draft
+          {formatPlatformLabel(deliverable.platform)}{" "}
+          {isProofUnderReview ? "live post" : "draft"}
         </CardTitle>
         <div className="mt-4 space-y-3 text-sm">
           <div className="flex items-center gap-2">
@@ -93,9 +123,9 @@ export function SubmissionReviewPage() {
               href={deliverable.livePostUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="font-semibold text-primary hover:underline"
             >
-              View live post
+              View live post ↗
             </a>
           )}
         </div>
@@ -153,12 +183,49 @@ export function SubmissionReviewPage() {
           </Card>
         )}
 
-        <Card>
-          <CardTitle>Decision</CardTitle>
-          <p className="mt-2 text-sm text-muted">
-            Approve this format only. Creator can then post and submit live proof.
-          </p>
-          {canReview ? (
+        {isProofUnderReview && (
+          <Card>
+            <CardTitle>Approve proof of work</CardTitle>
+            <p className="mt-2 text-sm text-muted">
+              The creator has submitted a live post. Verify the link above, then
+              approve to release earnings tracking.
+            </p>
+            <div className="mt-4 space-y-4">
+              <Button
+                className="w-full"
+                onClick={() => approveProofMutation.mutate()}
+                disabled={approveProofMutation.isPending || rejectProofMutation.isPending}
+              >
+                ✓ Approve proof — release earnings
+              </Button>
+              <textarea
+                className="min-h-[80px] w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm"
+                placeholder="Rejection reason (e.g. wrong hashtag, post removed)"
+                value={proofRejectReason}
+                onChange={(e) => setProofRejectReason(e.target.value)}
+              />
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => rejectProofMutation.mutate(proofRejectReason)}
+                disabled={
+                  rejectProofMutation.isPending ||
+                  approveProofMutation.isPending ||
+                  !proofRejectReason.trim()
+                }
+              >
+                Reject proof
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {canReview && (
+          <Card>
+            <CardTitle>Decision</CardTitle>
+            <p className="mt-2 text-sm text-muted">
+              Approve this format only. Creator can then post and submit live proof.
+            </p>
             <div className="mt-4 space-y-4">
               {history.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -212,12 +279,17 @@ export function SubmissionReviewPage() {
                 Reject {formatPlatformLabel(deliverable.platform)}
               </Button>
             </div>
-          ) : (
+          </Card>
+        )}
+
+        {!canReview && !isProofUnderReview && (
+          <Card>
+            <CardTitle>Decision</CardTitle>
             <p className="mt-4 text-sm text-muted">
               This deliverable is not in a reviewable state.
             </p>
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
     </div>
   );

@@ -372,6 +372,37 @@ export type AdminBrand = {
   createdAt: string;
 };
 
+export type AdminBrandDetail = {
+  id: string;
+  companyName: string;
+  companyEmail: string | null;
+  logoUrl: string | null;
+  email: string | null;
+  displayName: string | null;
+  pocName: string | null;
+  pocPhone: string | null;
+  pocEmail: string | null;
+  createdAt: string;
+  campaigns: Campaign[];
+};
+
+export type StaffBrand = {
+  id: string;
+  companyName: string;
+  logoUrl: string | null;
+  companyEmail: string | null;
+  campaignCount: number;
+  assignedAt: string;
+};
+
+export type StaffMember = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  assignedBrands: { id: string; companyName: string; logoUrl: string | null }[];
+};
+
 export type CampaignInvite = {
   id: string;
   campaignId: string;
@@ -450,6 +481,10 @@ const campaignsApi = {
 };
 
 const submissionsApi = {
+  listByCampaign: (token: string, campaignId: string) =>
+    apiFetch<DeliverableListItem[]>(`/submissions/deliverables?campaignId=${campaignId}`, {
+      accessToken: token,
+    }),
   list: (token: string, params?: { status?: string; campaignId?: string }) => {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
@@ -485,6 +520,25 @@ export const portalApi = {
   me: (token: string) =>
     apiFetch<BrandMe>("/users/me", { accessToken: token }),
 
+  updateBrandProfile: (
+    token: string,
+    body: { companyName?: string; displayName?: string; logoUrl?: string },
+  ) =>
+    apiFetch<{ companyName: string; logoUrl: string | null; displayName: string | null }>(
+      "/users/me/brand-profile",
+      { method: "PATCH", body: JSON.stringify(body), accessToken: token },
+    ),
+
+  uploadBrandLogo: (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiFetchForm<{ url: string }>("/users/me/brand-logo", {
+      method: "POST",
+      body: form,
+      accessToken: token,
+    });
+  },
+
   stats: (token: string) =>
     apiFetch<BrandStats>("/submissions/stats", { accessToken: token }),
 
@@ -497,11 +551,39 @@ export const adminApi = {
     apiFetch<{
       brandCount: number;
       campaignCount: number;
+      activeCampaignCount: number;
       pendingInvites: number;
+      totalViews: number;
+      totalSpentPaise: number;
+      pendingTasks: {
+        id: string;
+        status: string;
+        platform: string;
+        draftSubmittedAt: string | null;
+        creatorName: string;
+        campaignId: string;
+        campaignTitle: string;
+      }[];
+      topClippers: {
+        creatorId: string;
+        creatorName: string;
+        totalViews: number;
+        earnedPaise: number;
+      }[];
     }>("/admin/dashboard", { accessToken: token }),
 
   brands: (token: string) =>
     apiFetch<AdminBrand[]>("/admin/brands", { accessToken: token }),
+
+  brand: (token: string, id: string) =>
+    apiFetch<AdminBrandDetail>(`/admin/brands/${id}`, { accessToken: token }),
+
+  createBrand: (token: string, body: { companyName: string; companyEmail: string; pocName?: string; pocPhone?: string; pocEmail?: string }) =>
+    apiFetch<AdminBrand & { tempPassword: string; companyEmail?: string; pocName?: string; pocPhone?: string; pocEmail?: string }>("/admin/brands", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
 
   campaigns: (token: string, params?: { status?: string; page?: number; limit?: number }) => {
     const search = new URLSearchParams();
@@ -532,11 +614,65 @@ export const adminApi = {
       { method: "DELETE", accessToken: token },
     ),
 
+  approveProof: (token: string, deliverableId: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/admin/deliverables/${deliverableId}/approve-proof`,
+      { method: "POST", accessToken: token },
+    ),
+
+  rejectProof: (token: string, deliverableId: string, reason: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/admin/deliverables/${deliverableId}/reject-proof`,
+      {
+        method: "POST",
+        accessToken: token,
+        body: JSON.stringify({ reason }),
+      },
+    ),
+
   campaignsCrud: campaignsApi,
   submissions: submissionsApi,
   stats: (token: string) =>
     apiFetch<BrandStats>("/submissions/stats", { accessToken: token }),
+
+  // Team members
+  listTeamMembers: (token: string) =>
+    apiFetch<StaffMember[]>("/admin/team-members", { accessToken: token }),
+
+  createTeamMember: (token: string, body: { name: string; email: string; password: string }) =>
+    apiFetch<StaffMember>("/admin/team-members", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  assignBrand: (token: string, staffId: string, brandId: string) =>
+    apiFetch<{ assigned: boolean }>(`/admin/team-members/${staffId}/brands/${brandId}`, {
+      method: "POST",
+      accessToken: token,
+    }),
+
+  removeBrand: (token: string, staffId: string, brandId: string) =>
+    apiFetch<{ removed: boolean }>(`/admin/team-members/${staffId}/brands/${brandId}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
 };
 
 /** @deprecated use portalApi */
 export const brandApi = portalApi;
+
+export const staffApi = {
+  brands: (token: string) =>
+    apiFetch<StaffBrand[]>("/staff/brands", { accessToken: token }),
+
+  brand: (token: string, brandId: string) =>
+    apiFetch<AdminBrandDetail>(`/staff/brands/${brandId}`, { accessToken: token }),
+
+  createCampaign: (token: string, brandId: string, body: Record<string, unknown>) =>
+    apiFetch<Campaign>(`/staff/brands/${brandId}/campaigns`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+};

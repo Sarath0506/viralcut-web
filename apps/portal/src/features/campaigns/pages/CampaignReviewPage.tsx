@@ -43,8 +43,6 @@ export function CampaignReviewPage() {
     Number(draft.ratePer1kRupees),
   );
 
-  const publishBlocked = isAdmin && !draft.inviteAcceptedAt;
-
   async function onPublish() {
     await publishWithFeedback(toast);
   }
@@ -214,10 +212,10 @@ export function CampaignReviewPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Brand collaboration</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {draft.inviteAcceptedAt
-                    ? "A brand has accepted the invite. You can publish together."
-                    : "Invite a brand before publishing this campaign."}
+                    ? "A brand has accepted the invite."
+                    : "Optionally invite a brand to collaborate before publishing."}
                 </p>
               </div>
               <Link
@@ -246,22 +244,13 @@ export function CampaignReviewPage() {
             },
             {
               id: "publish",
-              label: saving
-                ? "Publishing..."
-                : publishBlocked
-                  ? "Invite brand to publish"
-                  : "Publish Campaign",
+              label: saving ? "Publishing..." : "Publish Campaign",
               onClick: () => void onPublish(),
-              icon: !saving && !publishBlocked ? (
-                <Rocket className="h-4 w-4" />
-              ) : undefined,
+              icon: !saving ? <Rocket className="h-4 w-4" /> : undefined,
               buttonProps: {
                 size: "sm",
                 variant: "success",
-                disabled: saving || invalidAssets || publishBlocked,
-                title: publishBlocked
-                  ? "Invite a brand and wait for acceptance before publishing"
-                  : undefined,
+                disabled: saving || invalidAssets,
               },
             },
           ]}

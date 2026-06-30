@@ -3,7 +3,6 @@ import {
   BarChart3,
   Building2,
   CreditCard,
-  Inbox,
   LayoutDashboard,
   Megaphone,
   Settings,
@@ -26,12 +25,6 @@ const brandNavItems: PortalNavItem[] = [
     icon: Megaphone,
     matchNested: true,
   },
-  {
-    href: "/submissions",
-    label: "Submissions",
-    icon: Inbox,
-    matchNested: true,
-  },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/billing", label: "Billing", icon: CreditCard },
   {
@@ -50,17 +43,17 @@ const adminNavItems: PortalNavItem[] = [
     icon: Megaphone,
     matchNested: true,
   },
-  {
-    href: "/admin/submissions",
-    label: "Submissions",
-    icon: Inbox,
-    matchNested: true,
-  },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
+const staffNavItems: PortalNavItem[] = [
+  { href: "/staff/brands", label: "My Brands", icon: Building2, matchNested: true },
+];
+
 export function getNavForRole(role: Portal): PortalNavItem[] {
-  return role === "admin" ? adminNavItems : brandNavItems;
+  if (role === "admin") return adminNavItems;
+  if (role === "staff") return staffNavItems;
+  return brandNavItems;
 }
 
 export function resolvePortalTitle(pathname: string, role: Portal): string {
@@ -89,7 +82,9 @@ export function resolvePortalTitle(pathname: string, role: Portal): string {
 }
 
 export function portalSidebarLabel(role: Portal): string {
-  return role === "admin" ? "Admin Portal" : "Brand Portal";
+  if (role === "admin") return "Admin Portal";
+  if (role === "staff") return "Staff Portal";
+  return "Brand Portal";
 }
 
 export function isNavItemActive(

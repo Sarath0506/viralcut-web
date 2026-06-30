@@ -47,10 +47,6 @@ export function useCampaignDraftSave() {
       );
     }
 
-    if (isAdmin && !draft.inviteAcceptedAt) {
-      throw new Error("Invite a brand and wait for acceptance before publishing.");
-    }
-
     const token = getToken();
     if (!token) {
       throw new Error("Your session expired. Please log in again.");

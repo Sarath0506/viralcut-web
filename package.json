@@ -6,6 +6,7 @@
     "build": "turbo run build",
     "dev:api": "pnpm --filter @viralcut/api dev",
     "dev:portal": "pnpm --filter @viralcut/portal dev",
+    "dev:staff": "pnpm --filter @viralcut/portal dev:staff",
     "build:portal": "pnpm tokens:build && pnpm --filter @viralcut/portal build",
     "tokens:build": "pnpm --filter @viralcut/ui-tokens build && node scripts/sync-ui-tokens.mjs",
     "verify:theme": "node scripts/verify-theme.mjs",
