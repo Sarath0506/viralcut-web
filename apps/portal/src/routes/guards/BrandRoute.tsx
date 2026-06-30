@@ -15,5 +15,9 @@ export function BrandRoute() {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
+  if (auth.user.role === "staff") {
+    return <Navigate to="/staff/brands" replace />;
+  }
+
   return <Outlet />;
 }

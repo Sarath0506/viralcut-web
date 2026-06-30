@@ -7,12 +7,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CampaignListSkeleton } from "@/components/ui/page-skeletons";
 import { useToast } from "@/components/ui/toaster";
-import { CampaignPagination } from "@/features/campaigns/components/campaign-pagination";
 import { CampaignStatusFilterTabs } from "@/features/campaigns/components/campaign-status-filter";
-import { CampaignsTable } from "@/features/campaigns/components/campaigns-table";
+import { CampaignsGrid } from "@/features/campaigns/components/campaigns-grid";
 import type { CampaignMenuAction } from "@/features/campaigns/components/campaign-row-actions";
 import {
-  PAGE_SIZE,
   useCampaignsList,
   useDeleteCampaign,
   useUpdateCampaignStatus,
@@ -27,19 +25,17 @@ export function CampaignsPage() {
   const base = isAdmin ? "/admin/campaigns" : "/campaigns";
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<CampaignStatusFilter>("all");
-  const [page, setPage] = useState(1);
   const [pendingAction, setPendingAction] = useState<{
     campaign: Campaign;
     action: CampaignMenuAction;
   } | null>(null);
 
-  const { data, isPending, isError, isFetching } = useCampaignsList(statusFilter, page);
+  const { data, isPending, isError, isFetching } = useCampaignsList(statusFilter, 1);
   const updateStatus = useUpdateCampaignStatus();
   const deleteCampaign = useDeleteCampaign();
 
   const handleFilterChange = (value: CampaignStatusFilter) => {
     setStatusFilter(value);
-    setPage(1);
   };
 
   const handleMenuAction = (campaign: Campaign, action: CampaignMenuAction) => {
@@ -76,7 +72,6 @@ export function CampaignsPage() {
   }
 
   const items = data?.items ?? [];
-  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -120,21 +115,13 @@ export function CampaignsPage() {
           </Link>
         </Card>
       ) : (
-        <>
-          <CampaignsTable
-            campaigns={items}
-            isAdmin={isAdmin}
-            basePath={base}
-            onMenuAction={handleMenuAction}
-            isRefreshing={isFetching && !isPending}
-          />
-          <CampaignPagination
-            page={page}
-            limit={PAGE_SIZE}
-            total={total}
-            onPageChange={setPage}
-          />
-        </>
+        <CampaignsGrid
+          campaigns={items}
+          isAdmin={isAdmin}
+          basePath={base}
+          onMenuAction={handleMenuAction}
+          isRefreshing={isFetching && !isPending}
+        />
       )}
 
       <ConfirmDialog

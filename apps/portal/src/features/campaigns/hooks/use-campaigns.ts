@@ -7,7 +7,7 @@ import {
 } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 200;
 
 export function useCampaignsList(
   status: CampaignStatusFilter,
