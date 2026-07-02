@@ -78,7 +78,10 @@ export function useCampaignDraftSave() {
       try {
         await saveDraft();
         const campaignId = draft.campaignId;
-        toast("Campaign saved as draft.", "success");
+        toast(
+          draft.status === "draft" ? "Campaign saved as draft." : "Changes saved.",
+          "success",
+        );
         reset();
         navigate(
           campaignId ? `${campaignsBase}/${campaignId}` : campaignsBase,
@@ -87,7 +90,7 @@ export function useCampaignDraftSave() {
         toast(apiErrorMessage(error, "Could not save draft."), "error");
       }
     },
-    [campaignsBase, draft.campaignId, navigate, reset, saveDraft],
+    [campaignsBase, draft.campaignId, draft.status, navigate, reset, saveDraft],
   );
 
   const publishWithFeedback = useCallback(

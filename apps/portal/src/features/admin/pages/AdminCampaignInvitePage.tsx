@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
+import { BackButton } from "@/components/ui/back-button";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PortalShellSkeleton } from "@/components/ui/page-skeletons";
@@ -59,12 +60,7 @@ export function AdminCampaignInvitePage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <Link
-          to={`/admin/campaigns/${id}/edit/review`}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back to campaign
-        </Link>
+        <BackButton to={`/admin/campaigns/${id}/edit/review`} label="Back to campaign" />
         <h1 className="mt-2 font-display text-2xl font-bold">Invite brand</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Invite a brand to collaborate on &quot;{campaign.title}&quot;. They must

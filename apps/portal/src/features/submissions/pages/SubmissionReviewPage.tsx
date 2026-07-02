@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
@@ -11,7 +12,7 @@ import { formatPlatformLabel } from "@/features/campaigns/lib/platform-labels";
 import { useSubmission } from "@/features/submissions/hooks/use-submissions";
 import { isDuplicateRejectionReason } from "@/features/submissions/lib/rejection-reason";
 import { submissionsListPath } from "@/features/submissions/lib/submissions-paths";
-import { adminApi, ApiError, portalApi } from "@/lib/api";
+import { ApiError, portalApi } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
 function formatRejectedAt(iso: string): string {
@@ -49,7 +50,7 @@ export function SubmissionReviewPage() {
   });
 
   const approveProofMutation = useMutation({
-    mutationFn: () => adminApi.approveProof(token!, id!),
+    mutationFn: () => portalApi.submissions.approveProof(token!, id!),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["submissions"] });
       toast("Proof approved — creator can now see their earnings");
@@ -61,7 +62,7 @@ export function SubmissionReviewPage() {
   });
 
   const rejectProofMutation = useMutation({
-    mutationFn: (reason: string) => adminApi.rejectProof(token!, id!, reason),
+    mutationFn: (reason: string) => portalApi.submissions.rejectProof(token!, id!, reason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["submissions"] });
       toast("Proof rejected — creator will be notified");
@@ -87,13 +88,14 @@ export function SubmissionReviewPage() {
 
   const canReview = deliverable.status === "under_review";
   const isProofUnderReview =
-    (deliverable.status === "proof_under_review" ||
-      deliverable.status === "live_submitted") &&
-    role === "admin";
+    deliverable.status === "proof_under_review" ||
+    deliverable.status === "live_submitted";
   const history = deliverable.rejectionHistory;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-4">
+      <BackButton to={submissionsPath} label="Back to submissions" />
+      <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardTitle>
           {formatPlatformLabel(deliverable.platform)}{" "}
@@ -290,6 +292,7 @@ export function SubmissionReviewPage() {
             </p>
           </Card>
         )}
+      </div>
       </div>
     </div>
   );

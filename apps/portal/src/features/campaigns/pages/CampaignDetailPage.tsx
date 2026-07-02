@@ -1,39 +1,48 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
-import { buttonVariants } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { useCampaign } from "@/features/campaigns/hooks/use-campaigns";
+import { StatusPill } from "@/components/ui/status-pill";
+import { useToast } from "@/components/ui/toaster";
+import {
+  ClipperProfileGrid,
+  ClipperProfileModal,
+  Leaderboard,
+  MediaPreview,
+  StatusBoard,
+  SubmissionGrid,
+} from "@/features/campaigns/components/campaign-board-widgets";
+import { useCampaign, useUpdateCampaignStatus } from "@/features/campaigns/hooks/use-campaigns";
+import {
+  buildClipperProfiles,
+  buildCreatorPerformance,
+  formatCount,
+  formatDate,
+  type ClipperProfile,
+} from "@/features/campaigns/lib/campaign-board-data";
 import { getWizardEditPath } from "@/features/campaigns/lib/wizard-paths";
+import { useSubmission } from "@/features/submissions/hooks/use-submissions";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { formatInr } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { portalApi, type DeliverableListItem } from "@/lib/api";
+import { portalApi, ApiError } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
-type Tab = "overview" | "working" | "reviews" | "proof" | "approved" | "analytics";
+type Tab = "overview" | "clippers" | "board" | "submissions" | "proof" | "analytics";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",  label: "Overview" },
-  { id: "working",   label: "Working Clippers" },
-  { id: "reviews",   label: "Work Reviews" },
-  { id: "proof",     label: "Proof of Work" },
-  { id: "approved",  label: "Approved Clippers" },
-  { id: "analytics", label: "Analytics" },
+  { id: "overview",    label: "Overview" },
+  { id: "clippers",    label: "Working Clippers" },
+  { id: "board",       label: "Status Board" },
+  { id: "submissions", label: "Work Submissions" },
+  { id: "proof",       label: "Proof of Work" },
+  { id: "analytics",   label: "Analytics" },
 ];
-
-const STATUS_COLOR: Record<string, string> = {
-  draft_pending:      "bg-zinc-500/15 text-zinc-400 border-zinc-500/25",
-  under_review:       "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
-  draft_rejected:     "bg-red-500/15 text-red-400 border-red-500/25",
-  draft_approved:     "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  live_submitted:     "bg-orange-500/15 text-orange-400 border-orange-500/25",
-  proof_under_review: "bg-orange-500/15 text-orange-400 border-orange-500/25",
-  proof_approved:     "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-  proof_rejected:     "bg-red-500/15 text-red-400 border-red-500/25",
-};
 
 const CAMPAIGN_STATUS_STYLE: Record<string, string> = {
   live:   "bg-emerald-500 text-white",
@@ -42,93 +51,257 @@ const CAMPAIGN_STATUS_STYLE: Record<string, string> = {
   closed: "bg-red-600 text-white",
 };
 
+/* ── Work Submissions / Proof of Work (actionable, open review modal) ── */
 
-function DeliverableCard({ d, detailPath }: { d: DeliverableListItem; detailPath: string }) {
-  const navigate = useNavigate();
-  const statusStyle = STATUS_COLOR[d.status] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/25";
+function SubmissionDetailModal({
+  deliverableId,
+  section,
+  onClose,
+}: {
+  deliverableId: string;
+  section: "submissions" | "proof";
+  onClose: () => void;
+}) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const { data: d, isPending } = useSubmission(deliverableId);
+
+  function invalidateAfterReview() {
+    void queryClient.invalidateQueries({ queryKey: ["submission", "deliverable", deliverableId] });
+    void queryClient.invalidateQueries({ queryKey: ["campaign-deliverables"] });
+    setShowRejectForm(false);
+    setRejectReason("");
+  }
+
+  const reviewMutation = useMutation({
+    mutationFn: (body: { action: "approve" | "reject"; rejectionReason?: string }) =>
+      portalApi.submissions.review(getToken()!, deliverableId, body),
+    onSuccess: () => {
+      invalidateAfterReview();
+      toast("Submission updated");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Review failed", "error"),
+  });
+
+  const approveProofMutation = useMutation({
+    mutationFn: () => portalApi.submissions.approveProof(getToken()!, deliverableId),
+    onSuccess: () => {
+      invalidateAfterReview();
+      toast("Proof approved — creator can now see their earnings");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Approval failed", "error"),
+  });
+
+  const rejectProofMutation = useMutation({
+    mutationFn: () => portalApi.submissions.rejectProof(getToken()!, deliverableId, rejectReason.trim()),
+    onSuccess: () => {
+      invalidateAfterReview();
+      toast("Proof rejected — creator will be notified");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Rejection failed", "error"),
+  });
+
+  const isMutating =
+    reviewMutation.isPending || approveProofMutation.isPending || rejectProofMutation.isPending;
+
+  const canReviewDraft = d?.status === "under_review";
+  const canReviewProof = d?.status === "proof_under_review" || d?.status === "live_submitted";
 
   return (
-    <div
-      onClick={() => navigate(detailPath)}
-      className="group cursor-pointer overflow-hidden rounded-2xl border border-border bg-surface transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg"
-    >
-      {/* Card header */}
-      <div className="flex items-center gap-3 border-b border-border/50 p-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-base font-black text-primary">
-          {d.creatorName.charAt(0).toUpperCase()}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold group-hover:text-primary">{d.creatorName}</p>
-          <p className="text-[11px] text-muted capitalize">{d.platform.replace(/_/g, " ")}</p>
-        </div>
-        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusStyle}`}>
-          {d.status.replace(/_/g, " ")}
-        </span>
-      </div>
-
-      {/* Card body */}
-      <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted">Submitted</span>
-          <span className="font-medium">
-            {d.draftSubmittedAt
-              ? new Date(d.draftSubmittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-              : "—"}
-          </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-bold text-lg">Work Submission Details</h2>
+            {d && <StatusPill status={d.status} />}
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface-variant hover:text-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        {d.priorRejectionCount > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted">Rejections</span>
-            <span className="font-semibold text-red-400">{d.priorRejectionCount}</span>
+        {isPending || !d ? (
+          <div className="flex-1 p-10 text-center text-sm text-muted">Loading…</div>
+        ) : (
+          <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-6 lg:grid-cols-[260px_1fr_260px]">
+            {/* LEFT — campaign + creator */}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Campaign Details</p>
+                <p className="mt-2 font-bold">{d.campaign.title}</p>
+                <div className="mt-3 space-y-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Status</span>
+                    <StatusPill status={d.campaign.status} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Rate</span>
+                    <span className="font-medium">{d.campaign.ratePer1kDisplay}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Budget</span>
+                    <span className="font-medium">{formatInr(d.campaign.budgetPaise)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Creator</p>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary">
+                    {(d.creator.displayName ?? d.creator.username ?? "C").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{d.creator.displayName ?? d.creator.username ?? "Creator"}</p>
+                    {d.creator.username && <p className="truncate text-xs text-muted">@{d.creator.username}</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MIDDLE — media + notes */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>{d.draftSubmittedAt ? `Submitted ${formatDate(d.draftSubmittedAt)}` : "Not submitted yet"}</span>
+                {(d.draftReviewedAt || d.proofReviewedAt) && (
+                  <span>Reviewed {formatDate(d.proofReviewedAt ?? d.draftReviewedAt!)}</span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {section === "submissions" ? (
+                  d.draftDriveUrl ? (
+                    <MediaPreview label="Draft" url={d.draftDriveUrl} />
+                  ) : (
+                    <div className="flex items-center justify-center rounded-xl border border-dashed border-border py-10 text-sm text-muted">
+                      Nothing submitted yet
+                    </div>
+                  )
+                ) : d.livePostUrl ? (
+                  <MediaPreview label="Live post" url={d.livePostUrl} />
+                ) : (
+                  <div className="flex items-center justify-center rounded-xl border border-dashed border-border py-10 text-sm text-muted">
+                    Nothing submitted yet
+                  </div>
+                )}
+              </div>
+
+              {d.rejectionReason && (
+                <div className="rounded-xl bg-surface-variant/50 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    Rejection reason
+                  </p>
+                  <p className="mt-1.5 text-sm text-muted">{d.rejectionReason}</p>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT — actions + history */}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Actions</p>
+                <div className="mt-3 space-y-3">
+                  {(canReviewDraft || canReviewProof) && showRejectForm ? (
+                    <>
+                      <textarea
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows={3}
+                        placeholder="Rejection reason (required)"
+                        className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setShowRejectForm(false)} disabled={isMutating}>
+                          Back
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          disabled={isMutating || !rejectReason.trim()}
+                          onClick={() =>
+                            canReviewDraft
+                              ? reviewMutation.mutate({ action: "reject", rejectionReason: rejectReason })
+                              : rejectProofMutation.mutate()
+                          }
+                        >
+                          {isMutating ? "Rejecting…" : "Confirm Reject"}
+                        </Button>
+                      </div>
+                    </>
+                  ) : canReviewDraft ? (
+                    <>
+                      <Button className="w-full" onClick={() => reviewMutation.mutate({ action: "approve" })} disabled={isMutating}>
+                        {reviewMutation.isPending ? "Accepting…" : "Accept submission"}
+                      </Button>
+                      <Button variant="destructive" className="w-full" onClick={() => setShowRejectForm(true)} disabled={isMutating}>
+                        Reject submission
+                      </Button>
+                    </>
+                  ) : canReviewProof ? (
+                    <>
+                      <Button className="w-full" onClick={() => approveProofMutation.mutate()} disabled={isMutating}>
+                        {approveProofMutation.isPending ? "Accepting…" : "Accept submission"}
+                      </Button>
+                      <Button variant="destructive" className="w-full" onClick={() => setShowRejectForm(true)} disabled={isMutating}>
+                        Reject submission
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="rounded-lg bg-surface-variant px-3 py-2.5 text-center text-sm text-muted">
+                      {d.status === "draft_pending" ? "Nothing to review yet." : "Already reviewed."}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {d.rejectionHistory.length > 0 && (
+                <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">History</p>
+                  <div className="mt-3 space-y-2">
+                    {d.rejectionHistory.map((event, i) => (
+                      <div key={event.id} className="rounded-lg border border-border bg-surface px-3 py-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold">Attempt {d.rejectionHistory.length - i}</span>
+                          <StatusPill status="draft_rejected" />
+                        </div>
+                        <p className="mt-1 text-xs text-muted">
+                          {formatDate(event.rejectedAt)}
+                          {event.reviewedByDisplayName ? ` · ${event.reviewedByDisplayName}` : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
-
-        {d.siblingDeliverables.length > 1 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted">Formats</span>
-            <span className="font-medium">{d.siblingDeliverables.length}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Footer CTA */}
-      <div className="border-t border-border/50 px-4 py-2.5 flex items-center justify-between">
-        <span className="text-xs text-muted">View details</span>
-        <svg className="h-3.5 w-3.5 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
       </div>
     </div>
   );
 }
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="flex items-center justify-center rounded-2xl border border-border bg-surface py-14">
-      <p className="text-sm text-muted">{message}</p>
-    </div>
-  );
-}
-
-function DeliverableList({ items, basePath }: { items: DeliverableListItem[]; basePath: string }) {
-  if (items.length === 0) return <EmptyState message="No clippers in this category yet." />;
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-      {items.map((d) => (
-        <DeliverableCard key={d.id} d={d} detailPath={`${basePath}/${d.id}`} />
-      ))}
-    </div>
-  );
-}
+/* ── Campaign detail page ── */
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const role = usePortalRole();
   const isAdmin = role === "admin";
-  const submissionsBase = isAdmin ? "/admin/submissions" : "/submissions";
   const { getToken } = useAuth();
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("overview");
+  const [selectedSubmission, setSelectedSubmission] = useState<{ id: string; section: "submissions" | "proof" } | null>(null);
+  const [selectedClipper, setSelectedClipper] = useState<ClipperProfile | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<"live" | "paused" | null>(null);
 
   const { data: campaign, isPending } = useCampaign(id);
   const { data: deliverables = [] } = useQuery({
@@ -136,28 +309,55 @@ export function CampaignDetailPage() {
     queryFn: () => portalApi.submissions.listByCampaign(getToken()!, id!),
     enabled: Boolean(getToken() && id),
   });
+  const updateStatus = useUpdateCampaignStatus();
 
   if (isPending || !campaign) return <DetailPageSkeleton />;
 
-  const editPath = campaign.status === "draft" && id ? getWizardEditPath(id, isAdmin) : null;
+  const editPath = id && campaign.status !== "closed" ? getWizardEditPath(id, isAdmin) : null;
+  const editLabel = campaign.status === "draft" ? "Continue editing" : "Edit campaign";
+  // Staff arrive via a specific brand's page, not a generic campaigns list — fall back to browser history for them.
+  const backTo = isAdmin ? "/admin/campaigns" : role === "brand" ? "/campaigns" : undefined;
 
-  const working  = deliverables; // all clippers who have started work
-  const reviews  = deliverables.filter(d => ["draft_pending","under_review"].includes(d.status));
-  const proof    = deliverables.filter(d => ["live_submitted","proof_under_review"].includes(d.status));
-  const approved = deliverables.filter(d => ["draft_approved","proof_approved"].includes(d.status));
-  const totalClippers = new Set(deliverables.map(d => d.participationId)).size;
+  async function confirmStatusChange() {
+    if (!id || !pendingStatus) return;
+    try {
+      await updateStatus.mutateAsync({ id, status: pendingStatus });
+      toast(pendingStatus === "paused" ? "Campaign paused" : "Campaign resumed");
+      setPendingStatus(null);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Could not update campaign", "error");
+    }
+  }
 
-  const counts: Partial<Record<Tab, number>> = {
-    working:  deliverables.length,
-    reviews:  reviews.length,
-    proof:    proof.length,
-    approved: approved.length,
-  };
+  async function copyShareLink() {
+    if (!id) return;
+    const url = `${window.location.origin}/share/campaigns/${id}`;
+    await navigator.clipboard.writeText(url);
+    toast("Read-only campaign link copied");
+  }
+
+  const clippers = buildClipperProfiles(deliverables);
+  // Anything that has ever had a draft submitted stays here permanently — approving
+  // or progressing to the proof stage only updates the status pill, it doesn't move sections.
+  const workSubmissions = deliverables.filter((d) => d.status !== "draft_pending");
+  const proofSubmissions = deliverables.filter((d) => ["live_submitted", "proof_under_review", "proof_approved", "proof_rejected"].includes(d.status));
+  const reviews  = deliverables.filter((d) => d.status === "under_review");
+  const approved = deliverables.filter((d) => ["draft_approved", "proof_approved"].includes(d.status));
+  const totalClippers = new Set(deliverables.map((d) => d.participationId)).size;
+
+  const creatorPerformance = buildCreatorPerformance(deliverables);
+  const totalViews = deliverables.reduce((sum, d) => sum + d.viewCount, 0);
+  const totalLikes = deliverables.reduce((sum, d) => sum + d.likeCount, 0);
+  const totalComments = deliverables.reduce((sum, d) => sum + d.commentCount, 0);
+  const totalShares = deliverables.reduce((sum, d) => sum + d.shareCount, 0);
+  const totalEarningsPaise = deliverables.reduce((sum, d) => sum + d.estimatedPaise, 0);
 
   const campaignStatusStyle = CAMPAIGN_STATUS_STYLE[campaign.status] ?? CAMPAIGN_STATUS_STYLE.draft;
 
   return (
     <div className="space-y-5">
+      <BackButton to={backTo} label="Back to campaigns" />
+
       {/* ── Side-by-side hero ── */}
       <div className="overflow-hidden rounded-2xl border border-border bg-surface">
         <div className="flex gap-0">
@@ -196,11 +396,28 @@ export function CampaignDetailPage() {
                 <h1 className="mt-2 text-xl font-black leading-tight truncate">{campaign.title}</h1>
                 <p className="mt-0.5 text-sm font-semibold text-primary">{campaign.ratePer1kDisplay}</p>
               </div>
-              {editPath && (
-                <Link to={editPath} className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
-                  Continue editing
-                </Link>
-              )}
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {editPath && (
+                  <Link to={editPath} className={cn(buttonVariants({ size: "sm", variant: "outline" }), "shrink-0")}>
+                    {editLabel}
+                  </Link>
+                )}
+                {campaign.status === "live" && (
+                  <Button size="sm" variant="outline" onClick={() => setPendingStatus("paused")}>
+                    Pause
+                  </Button>
+                )}
+                {campaign.status === "paused" && (
+                  <Button size="sm" onClick={() => setPendingStatus("live")}>
+                    Resume
+                  </Button>
+                )}
+                {campaign.status !== "draft" && (
+                  <Button size="sm" variant="outline" onClick={() => void copyShareLink()}>
+                    Share
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Quick stats row */}
@@ -237,11 +454,6 @@ export function CampaignDetailPage() {
             }`}
           >
             {t.label}
-            {counts[t.id] !== undefined && counts[t.id]! > 0 && (
-              <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                {counts[t.id]}
-              </span>
-            )}
             {tab === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />}
           </button>
         ))}
@@ -262,36 +474,73 @@ export function CampaignDetailPage() {
       )}
 
       {/* ── Working Clippers ── */}
-      {tab === "working" && <DeliverableList items={working} basePath={submissionsBase} />}
+      {tab === "clippers" && <ClipperProfileGrid items={clippers} onSelect={setSelectedClipper} />}
 
-      {/* ── Work Reviews ── */}
-      {tab === "reviews" && <DeliverableList items={reviews} basePath={submissionsBase} />}
+      {/* ── Status Board ── */}
+      {tab === "board" && <StatusBoard deliverables={deliverables} />}
+
+      {/* ── Work Submissions ── */}
+      {tab === "submissions" && (
+        <SubmissionGrid
+          items={workSubmissions}
+          onSelect={(id) => setSelectedSubmission({ id, section: "submissions" })}
+          emptyMessage="No work submissions yet."
+        />
+      )}
 
       {/* ── Proof of Work ── */}
-      {tab === "proof" && <DeliverableList items={proof} basePath={submissionsBase} />}
-
-      {/* ── Approved Clippers ── */}
-      {tab === "approved" && <DeliverableList items={approved} basePath={submissionsBase} />}
+      {tab === "proof" && (
+        <SubmissionGrid
+          items={proofSubmissions}
+          onSelect={(id) => setSelectedSubmission({ id, section: "proof" })}
+          emptyMessage="No proof submissions yet."
+        />
+      )}
 
       {/* ── Analytics ── */}
       {tab === "analytics" && (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {[
-              { label: "Total Clippers", value: String(totalClippers) },
-              { label: "In Review",      value: String(reviews.length) },
-              { label: "Proof Pending",  value: String(proof.length) },
-              { label: "Approved",       value: String(approved.length) },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-2xl border border-border bg-surface p-5 text-center">
-                <p className="text-3xl font-black">{value}</p>
-                <p className="mt-1 text-xs text-muted">{label}</p>
-              </div>
-            ))}
+          {/* Overall campaign performance */}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Campaign Performance</p>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+              {[
+                { label: "Total Views",    value: formatCount(totalViews) },
+                { label: "Total Likes",    value: formatCount(totalLikes) },
+                { label: "Total Comments", value: formatCount(totalComments) },
+                { label: "Total Shares",   value: formatCount(totalShares) },
+                { label: "Total Earnings", value: formatInr(totalEarningsPaise) },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-2xl border border-border bg-surface p-5 text-center">
+                  <p className="text-2xl font-black">{value}</p>
+                  <p className="mt-1 text-xs text-muted">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* Top performers leaderboard */}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Top Performers</p>
+            <Leaderboard items={creatorPerformance} />
+          </div>
+
+          {/* Pipeline breakdown */}
           <div className="rounded-2xl border border-border bg-surface p-5">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Deliverable Breakdown</p>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Pipeline Breakdown</p>
+            <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[
+                { label: "Total Clippers", value: String(totalClippers) },
+                { label: "In Review",      value: String(reviews.length) },
+                { label: "Proof Pending",  value: String(proofSubmissions.length) },
+                { label: "Approved",       value: String(approved.length) },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl border border-border bg-surface-variant/30 p-4 text-center">
+                  <p className="text-xl font-black">{value}</p>
+                  <p className="mt-1 text-xs text-muted">{label}</p>
+                </div>
+              ))}
+            </div>
             {[
               { label: "Draft Pending",       count: deliverables.filter(d => d.status === "draft_pending").length,      color: "bg-zinc-400" },
               { label: "Under Review",        count: deliverables.filter(d => d.status === "under_review").length,       color: "bg-yellow-400" },
@@ -312,6 +561,32 @@ export function CampaignDetailPage() {
           </div>
         </div>
       )}
+
+      {selectedSubmission && (
+        <SubmissionDetailModal
+          deliverableId={selectedSubmission.id}
+          section={selectedSubmission.section}
+          onClose={() => setSelectedSubmission(null)}
+        />
+      )}
+
+      {selectedClipper && (
+        <ClipperProfileModal clipper={selectedClipper} onClose={() => setSelectedClipper(null)} />
+      )}
+
+      <ConfirmDialog
+        open={pendingStatus !== null}
+        title={pendingStatus === "paused" ? "Pause campaign?" : "Resume campaign?"}
+        description={
+          pendingStatus === "paused"
+            ? "Creators will no longer see this campaign until you resume it."
+            : "Make this campaign live for creators again."
+        }
+        confirmLabel={pendingStatus === "paused" ? "Pause" : "Resume"}
+        loading={updateStatus.isPending}
+        onConfirm={() => void confirmStatusChange()}
+        onCancel={() => setPendingStatus(null)}
+      />
     </div>
   );
 }

@@ -238,7 +238,11 @@ export function CampaignReviewPage() {
           rightActions={[
             {
               id: "save-draft",
-              label: saving ? "Saving..." : "Save as Draft",
+              label: saving
+                ? "Saving..."
+                : draft.status === "draft"
+                  ? "Save as Draft"
+                  : "Save changes",
               onClick: () => void saveDraftWithFeedback(toast),
               buttonProps: { size: "sm", variant: "ghost", disabled: saving },
             },

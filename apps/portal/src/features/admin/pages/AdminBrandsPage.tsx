@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -42,23 +42,40 @@ function CreateBrandModal({ onClose }: { onClose: () => void }) {
   const { getToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
   const [pocName, setPocName] = useState("");
   const [pocPhone, setPocPhone] = useState("");
   const [pocEmail, setPocEmail] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [created, setCreated] = useState<{ companyName: string; companyEmail: string; tempPassword: string } | null>(null);
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
   const mutation = useMutation({
-    mutationFn: () =>
-      adminApi.createBrand(getToken()!, {
+    mutationFn: async () => {
+      let logoUrl: string | undefined;
+      if (logoFile) {
+        const res = await adminApi.uploadBrandLogo(getToken()!, logoFile);
+        logoUrl = res.url;
+      }
+      return adminApi.createBrand(getToken()!, {
         companyName: companyName.trim(),
         companyEmail: companyEmail.trim(),
         pocName: pocName.trim() || undefined,
         pocPhone: pocPhone.trim() || undefined,
         pocEmail: pocEmail.trim() || undefined,
-      }),
+        logoUrl,
+      });
+    },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-brands"] });
       setCreated({ companyName: data.companyName, companyEmail: data.companyEmail ?? data.email ?? "", tempPassword: data.tempPassword });
@@ -113,6 +130,36 @@ function CreateBrandModal({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Logo */}
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-surface-variant/50 p-4">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo preview" className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary/30" />
+                ) : companyName.trim() ? (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary">
+                    {initials(companyName)}
+                  </div>
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+                    </svg>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    {logoFile ? "Change logo" : "Upload logo"}
+                  </Button>
+                  <p className="text-xs text-muted">PNG, JPG or WebP · Max 5 MB</p>
+                </div>
+              </div>
+
               {/* Company info */}
               <div className="rounded-xl border border-border bg-surface-variant/50 p-4 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Company</p>

@@ -114,6 +114,11 @@ const AdminCampaignInvitePage = lazy(() =>
     default: m.AdminCampaignInvitePage,
   })),
 );
+const PublicCampaignPage = lazy(() =>
+  import("@/features/campaigns/pages/PublicCampaignPage").then((m) => ({
+    default: m.PublicCampaignPage,
+  })),
+);
 
 const SubmissionsPage = lazy(() =>
   import("@/features/submissions/pages/SubmissionsPage").then((m) => ({
@@ -197,6 +202,10 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
+      {
+        path: "share/campaigns/:id",
+        element: withSuspense(null, <PublicCampaignPage />),
+      },
       {
         element: <GuestRoute />,
         children: [

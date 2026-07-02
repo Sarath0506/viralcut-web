@@ -23,6 +23,7 @@ import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
 export type CampaignDraft = {
   campaignId: string | null;
+  status: "draft" | "live" | "paused" | "closed";
   ownership?: "brand_created" | "admin_created";
   inviteAcceptedAt?: string | null;
   coverImageUrl: string;
@@ -44,6 +45,7 @@ export type CampaignDraft = {
 
 const empty: CampaignDraft = {
   campaignId: null,
+  status: "draft",
   coverImageUrl: "",
   title: "",
   category: "",
@@ -126,13 +128,6 @@ export function CampaignWizardProvider({
       setLoadError(null);
       try {
         const campaign = await portalApi.campaigns.get(token, campaignId);
-        if (campaign.status !== "draft") {
-          if (!cancelled) {
-            const base = isAdmin ? "/admin/campaigns" : "/campaigns";
-            navigate(`${base}/${campaignId}`, { replace: true });
-          }
-          return;
-        }
         if (!cancelled) {
           setDraft(campaignToDraft(campaign));
         }
@@ -174,8 +169,10 @@ export function CampaignWizardProvider({
 
       setSaving(true);
       try {
+        // Preserve whatever status the campaign already has (draft/live/paused) —
+        // only the explicit "Publish" action should move a campaign into "live".
         const body = {
-          ...buildCampaignBody(current, "draft"),
+          ...buildCampaignBody(current, current.status),
           wizardStep: wizardStep ?? currentStep,
         };
 

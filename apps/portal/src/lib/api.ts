@@ -181,6 +181,56 @@ type RegisterPayload = {
   acceptTerms: true;
 };
 
+export type PublicReferenceAsset = { type: "image" | "video"; url: string; label?: string };
+export type PublicSourceAsset = { type: "drive" | "youtube"; url: string; label?: string };
+
+export type PublicCampaign = {
+  id: string;
+  title: string;
+  category: string | null;
+  platform: string;
+  platforms: string[];
+  status: string;
+  brief: string;
+  briefHook: string | null;
+  doRules: string | null;
+  avoidRules: string | null;
+  sourceAssets: PublicSourceAsset[] | null;
+  referenceAssets: PublicReferenceAsset[] | null;
+  coverImageUrl: string | null;
+  productUrl: string | null;
+  startDate: string | null;
+  brandCompanyName: string | null;
+  brandLogoUrl: string | null;
+};
+
+export type PublicDeliverableListItem = {
+  id: string;
+  platform: string;
+  status: string;
+  draftDriveUrl: string | null;
+  livePostUrl: string | null;
+  rejectionReason: string | null;
+  draftSubmittedAt: string | null;
+  participationId: string;
+  joinedAt: string;
+  creatorName: string;
+  priorRejectionCount: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  estimatedPaise: number;
+  siblingDeliverables: Array<{ id: string; platform: string; status: string }>;
+};
+
+export const publicApi = {
+  campaign: (id: string) =>
+    apiFetchPublic<PublicCampaign>(`/public/campaigns/${id}`),
+  deliverables: (id: string) =>
+    apiFetchPublic<PublicDeliverableListItem[]>(`/public/campaigns/${id}/deliverables`),
+};
+
 export const authApi = {
   register: (payload: RegisterPayload) =>
     apiFetch<AuthResponse>("/auth/brand/register", {
@@ -311,8 +361,14 @@ export type DeliverableListItem = {
   campaignId: string;
   campaignTitle: string;
   participationId: string;
+  joinedAt: string;
   creatorName: string;
   priorRejectionCount: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  estimatedPaise: number;
   siblingDeliverables: Array<{
     id: string;
     platform: string;
@@ -328,9 +384,12 @@ export type DeliverableDetail = {
   livePostUrl: string | null;
   rejectionReason: string | null;
   draftSubmittedAt: string | null;
+  draftReviewedAt: string | null;
+  liveSubmittedAt: string | null;
+  proofReviewedAt: string | null;
   participationId: string;
   rejectionHistory: RejectionHistoryEvent[];
-  campaign: { id: string; title: string; ratePer1kDisplay: string };
+  campaign: { id: string; title: string; status: string; ratePer1kDisplay: string; budgetPaise: number };
   creator: {
     id: string;
     displayName: string | null;
@@ -514,6 +573,51 @@ const submissionsApi = {
         body: JSON.stringify(body),
       },
     ),
+  approveProof: (token: string, deliverableId: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/submissions/deliverables/${deliverableId}/approve-proof`,
+      { method: "PATCH", accessToken: token },
+    ),
+  rejectProof: (token: string, deliverableId: string, reason: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/submissions/deliverables/${deliverableId}/reject-proof`,
+      {
+        method: "PATCH",
+        accessToken: token,
+        body: JSON.stringify({ reason }),
+      },
+    ),
+  analyticsOverview: (token: string) =>
+    apiFetch<AnalyticsOverview>("/submissions/analytics", { accessToken: token }),
+};
+
+export type AnalyticsOverview = {
+  totals: {
+    totalViews: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalEarningsPaise: number;
+    totalCampaigns: number;
+    totalClippers: number;
+  };
+  campaigns: Array<{
+    id: string;
+    title: string;
+    status: string;
+    totalViews: number;
+    totalEarningsPaise: number;
+    clipperCount: number;
+  }>;
+  topCreators: Array<{
+    creatorId: string;
+    creatorName: string;
+    totalViews: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalEarningsPaise: number;
+  }>;
 };
 
 export const portalApi = {
@@ -578,7 +682,17 @@ export const adminApi = {
   brand: (token: string, id: string) =>
     apiFetch<AdminBrandDetail>(`/admin/brands/${id}`, { accessToken: token }),
 
-  createBrand: (token: string, body: { companyName: string; companyEmail: string; pocName?: string; pocPhone?: string; pocEmail?: string }) =>
+  uploadBrandLogo: (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiFetchForm<{ url: string }>("/admin/brand-logo", {
+      method: "POST",
+      body: form,
+      accessToken: token,
+    });
+  },
+
+  createBrand: (token: string, body: { companyName: string; companyEmail: string; pocName?: string; pocPhone?: string; pocEmail?: string; logoUrl?: string }) =>
     apiFetch<AdminBrand & { tempPassword: string; companyEmail?: string; pocName?: string; pocPhone?: string; pocEmail?: string }>("/admin/brands", {
       method: "POST",
       body: JSON.stringify(body),
@@ -612,22 +726,6 @@ export const adminApi = {
     apiFetch<{ revoked: boolean; id: string }>(
       `/admin/campaigns/${campaignId}/invites/${inviteId}`,
       { method: "DELETE", accessToken: token },
-    ),
-
-  approveProof: (token: string, deliverableId: string) =>
-    apiFetch<{ id: string; status: string }>(
-      `/admin/deliverables/${deliverableId}/approve-proof`,
-      { method: "POST", accessToken: token },
-    ),
-
-  rejectProof: (token: string, deliverableId: string, reason: string) =>
-    apiFetch<{ id: string; status: string }>(
-      `/admin/deliverables/${deliverableId}/reject-proof`,
-      {
-        method: "POST",
-        accessToken: token,
-        body: JSON.stringify({ reason }),
-      },
     ),
 
   campaignsCrud: campaignsApi,

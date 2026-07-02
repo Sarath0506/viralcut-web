@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { useToast } from "@/components/ui/toaster";
@@ -219,16 +220,7 @@ export function AdminBrandDetailPage() {
     <div className="space-y-6">
       {showAssign && <AssignTeamModal brandId={brandId} onClose={() => setShowAssign(false)} />}
 
-      {/* Back */}
-      <button
-        onClick={() => navigate("/admin/brands")}
-        className="flex items-center gap-2 text-sm text-muted transition-colors hover:text-foreground"
-      >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        All Brands
-      </button>
+      <BackButton to="/admin/brands" label="All Brands" />
 
       {/* Brand hero */}
       <div className="overflow-hidden rounded-2xl border border-border bg-surface">

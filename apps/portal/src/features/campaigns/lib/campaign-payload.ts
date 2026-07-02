@@ -26,7 +26,7 @@ export function hasInvalidReferenceAssets(assets: ReferenceAsset[]): boolean {
 
 export function buildCampaignBody(
   draft: CampaignDraft,
-  status: "draft" | "live",
+  status: "draft" | "live" | "paused" | "closed",
   brandProfileId?: string | null,
 ): Record<string, unknown> {
   const referenceAssets = toApiReferenceAssets(draft.referenceAssets);
