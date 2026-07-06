@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { StatusPill } from "@/components/ui/status-pill";
+import { CreatorProfileModal } from "@/features/creators/components/CreatorProfileModal";
 import {
   BOARD_COLUMNS,
   RANK_STYLE,
@@ -23,7 +24,7 @@ export function EmptyState({ message }: { message: string }) {
 
 /* ── Status Board (read-only pipeline stages) ── */
 
-function BoardStageCard({ d }: { d: DeliverableForBoard }) {
+function BoardStageCard({ d, onViewProfile }: { d: DeliverableForBoard; onViewProfile: (creatorId: string) => void }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-3">
       <div className="flex items-center gap-2.5">
@@ -31,7 +32,17 @@ function BoardStageCard({ d }: { d: DeliverableForBoard }) {
           {d.creatorName.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{d.creatorName}</p>
+          {d.creatorId ? (
+            <button
+              type="button"
+              onClick={() => onViewProfile(d.creatorId!)}
+              className="truncate text-sm font-semibold hover:text-primary hover:underline"
+            >
+              {d.creatorName}
+            </button>
+          ) : (
+            <p className="truncate text-sm font-semibold">{d.creatorName}</p>
+          )}
           <p className="truncate text-[11px] text-muted">{formatPlatformLabel(d.platform)}</p>
         </div>
       </div>
@@ -57,8 +68,11 @@ function EmptyColumn() {
 }
 
 export function StatusBoard({ deliverables }: { deliverables: DeliverableForBoard[] }) {
+  const [viewCreatorId, setViewCreatorId] = useState<string | null>(null);
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-surface p-4" style={{ height: "calc(100vh - 260px)" }}>
+      {viewCreatorId && <CreatorProfileModal creatorId={viewCreatorId} onClose={() => setViewCreatorId(null)} />}
       <div className="flex h-full gap-4">
         {BOARD_COLUMNS.map((col) => {
           const items = deliverables.filter((d) => col.statuses.includes(d.status));
@@ -74,7 +88,7 @@ export function StatusBoard({ deliverables }: { deliverables: DeliverableForBoar
               <div className="flex-1 space-y-3 overflow-y-auto px-3 pb-3">
                 {items.length === 0
                   ? <EmptyColumn />
-                  : items.map((d) => <BoardStageCard key={d.id} d={d} />)}
+                  : items.map((d) => <BoardStageCard key={d.id} d={d} onViewProfile={setViewCreatorId} />)}
               </div>
             </div>
           );
@@ -123,8 +137,13 @@ export function ClipperProfileGrid({ items, onSelect }: { items: ClipperProfile[
 }
 
 export function ClipperProfileModal({ clipper, onClose }: { clipper: ClipperProfile; onClose: () => void }) {
+  const [showFullProfile, setShowFullProfile] = useState(false);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      {showFullProfile && clipper.creatorId && (
+        <CreatorProfileModal creatorId={clipper.creatorId} onClose={() => setShowFullProfile(false)} />
+      )}
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="font-bold text-lg">Clipper Profile</h2>
@@ -155,6 +174,16 @@ export function ClipperProfileModal({ clipper, onClose }: { clipper: ClipperProf
               </div>
             ))}
           </div>
+
+          {clipper.creatorId && (
+            <button
+              type="button"
+              onClick={() => setShowFullProfile(true)}
+              className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold hover:border-primary/30 hover:text-primary"
+            >
+              View Full Profile
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -164,9 +193,12 @@ export function ClipperProfileModal({ clipper, onClose }: { clipper: ClipperProf
 /* ── Analytics leaderboard ── */
 
 export function Leaderboard({ items }: { items: CreatorPerformance[] }) {
+  const [viewCreatorId, setViewCreatorId] = useState<string | null>(null);
+
   if (items.length === 0) return <EmptyState message="No performance data yet." />;
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+      {viewCreatorId && <CreatorProfileModal creatorId={viewCreatorId} onClose={() => setViewCreatorId(null)} />}
       <div className="min-w-[640px]">
         <div className="grid grid-cols-[40px_1fr_80px_80px_90px_80px_100px] gap-2 border-b border-border bg-surface-variant/40 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted">
           <span>#</span>
@@ -191,7 +223,17 @@ export function Leaderboard({ items }: { items: CreatorPerformance[] }) {
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
                   {c.creatorName.charAt(0).toUpperCase()}
                 </div>
-                <p className="truncate text-sm font-semibold">{c.creatorName}</p>
+                {c.creatorId ? (
+                  <button
+                    type="button"
+                    onClick={() => setViewCreatorId(c.creatorId!)}
+                    className="truncate text-sm font-semibold hover:text-primary hover:underline"
+                  >
+                    {c.creatorName}
+                  </button>
+                ) : (
+                  <p className="truncate text-sm font-semibold">{c.creatorName}</p>
+                )}
               </div>
               <span className="text-right text-sm font-medium">{formatCount(c.totalViews)}</span>
               <span className="text-right text-sm font-medium">{formatCount(c.totalLikes)}</span>

@@ -6,6 +6,7 @@ export type DeliverableForBoard = {
   draftSubmittedAt: string | null;
   participationId: string;
   joinedAt: string;
+  creatorId?: string;
   creatorName: string;
   priorRejectionCount: number;
   viewCount: number;
@@ -48,6 +49,7 @@ export const RANK_STYLE: Record<number, string> = {
 
 export type ClipperProfile = {
   participationId: string;
+  creatorId?: string;
   creatorName: string;
   platforms: string[];
   joinedAt: string;
@@ -61,6 +63,7 @@ export function buildClipperProfiles(deliverables: DeliverableForBoard[]): Clipp
     if (!entry) {
       entry = {
         participationId: d.participationId,
+        creatorId: d.creatorId,
         creatorName: d.creatorName,
         platforms: [],
         joinedAt: d.joinedAt,
@@ -78,6 +81,7 @@ export function buildClipperProfiles(deliverables: DeliverableForBoard[]): Clipp
 
 export type CreatorPerformance = {
   participationId: string;
+  creatorId?: string;
   creatorName: string;
   totalViews: number;
   totalLikes: number;
@@ -93,6 +97,7 @@ export function buildCreatorPerformance(deliverables: DeliverableForBoard[]): Cr
     if (!entry) {
       entry = {
         participationId: d.participationId,
+        creatorId: d.creatorId,
         creatorName: d.creatorName,
         totalViews: 0,
         totalLikes: 0,

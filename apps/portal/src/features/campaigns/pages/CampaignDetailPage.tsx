@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "@/components/ui/back-button";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -26,14 +26,15 @@ import {
   type ClipperProfile,
 } from "@/features/campaigns/lib/campaign-board-data";
 import { getWizardEditPath } from "@/features/campaigns/lib/wizard-paths";
+import { CreatorProfileModal } from "@/features/creators/components/CreatorProfileModal";
 import { useSubmission } from "@/features/submissions/hooks/use-submissions";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { formatInr } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { portalApi, ApiError } from "@/lib/api";
+import { adminApi, portalApi, ApiError, type CampaignCreatorPayout } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
-type Tab = "overview" | "clippers" | "board" | "submissions" | "proof" | "analytics";
+type Tab = "overview" | "clippers" | "board" | "submissions" | "proof" | "analytics" | "payouts";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",    label: "Overview" },
@@ -67,6 +68,7 @@ function SubmissionDetailModal({
   const queryClient = useQueryClient();
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showCreatorProfile, setShowCreatorProfile] = useState(false);
 
   const { data: d, isPending } = useSubmission(deliverableId);
 
@@ -113,6 +115,9 @@ function SubmissionDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      {showCreatorProfile && d && (
+        <CreatorProfileModal creatorId={d.creator.id} onClose={() => setShowCreatorProfile(false)} />
+      )}
       <div className="flex h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
@@ -162,6 +167,9 @@ function SubmissionDetailModal({
                     {d.creator.username && <p className="truncate text-xs text-muted">@{d.creator.username}</p>}
                   </div>
                 </div>
+                <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => setShowCreatorProfile(true)}>
+                  View Profile
+                </Button>
               </div>
             </div>
 
@@ -290,15 +298,163 @@ function SubmissionDetailModal({
   );
 }
 
+/* ── Payouts (admin only) ── */
+
+function initials(name: string) {
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function PayoutsPanel({ campaignId }: { campaignId: string }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const token = getToken()!;
+  const [confirmTarget, setConfirmTarget] = useState<{ type: "all" } | { type: "creator"; creatorId: string; creatorName: string } | null>(null);
+
+  const { data: payouts = [], isPending } = useQuery({
+    queryKey: ["campaign-payouts", campaignId],
+    queryFn: () => adminApi.campaignPayouts(token, campaignId),
+    enabled: Boolean(token && campaignId),
+  });
+
+  function invalidate() {
+    void queryClient.invalidateQueries({ queryKey: ["campaign-payouts", campaignId] });
+  }
+
+  const payAllMutation = useMutation({
+    mutationFn: () => adminApi.payoutAll(token, campaignId),
+    onSuccess: (res) => {
+      invalidate();
+      setConfirmTarget(null);
+      toast(res.paidCount > 0 ? `Paid ${formatInr(res.totalPaidPaise)} across ${res.paidCount} deliverable${res.paidCount === 1 ? "" : "s"}` : "Nothing to pay");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Payout failed", "error"),
+  });
+
+  const payCreatorMutation = useMutation({
+    mutationFn: (creatorId: string) => adminApi.payoutCreator(token, campaignId, creatorId),
+    onSuccess: (res) => {
+      invalidate();
+      setConfirmTarget(null);
+      toast(res.paidCount > 0 ? `Paid ${formatInr(res.totalPaidPaise)}` : "Nothing to pay");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Payout failed", "error"),
+  });
+
+  const isMutating = payAllMutation.isPending || payCreatorMutation.isPending;
+  const totalUnpaidPaise = payouts.reduce((sum, p) => sum + p.totalUnpaidPaise, 0);
+  const creatorsWithUnpaid = payouts.filter((p) => p.totalUnpaidPaise > 0).length;
+
+  if (isPending) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-surface" />;
+  }
+
+  if (payouts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface py-16 text-center">
+        <p className="font-medium">No approved work yet</p>
+        <p className="mt-1 text-sm text-muted">Payouts unlock once you approve proof of work in the Proof of Work tab.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={confirmTarget?.type === "all" ? "Pay all creators?" : `Pay ${confirmTarget?.type === "creator" ? confirmTarget.creatorName : ""}?`}
+        description={
+          confirmTarget?.type === "all"
+            ? `This will pay ${formatInr(totalUnpaidPaise)} across ${creatorsWithUnpaid} creator${creatorsWithUnpaid === 1 ? "" : "s"} for this campaign's approved work.`
+            : `This will pay ${formatInr(payouts.find((p) => confirmTarget?.type === "creator" && p.creatorId === confirmTarget.creatorId)?.totalUnpaidPaise ?? 0)} to this creator for this campaign's approved work.`
+        }
+        confirmLabel="Pay"
+        loading={isMutating}
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={() => {
+          if (confirmTarget?.type === "all") payAllMutation.mutate();
+          else if (confirmTarget?.type === "creator") payCreatorMutation.mutate(confirmTarget.creatorId);
+        }}
+      />
+
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-surface p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Unpaid earnings</p>
+          <p className="mt-1 text-2xl font-black">{formatInr(totalUnpaidPaise)}</p>
+          <p className="mt-0.5 text-xs text-muted">{creatorsWithUnpaid} creator{creatorsWithUnpaid === 1 ? "" : "s"} awaiting payout</p>
+        </div>
+        <Button disabled={totalUnpaidPaise === 0 || isMutating} onClick={() => setConfirmTarget({ type: "all" })}>
+          Pay All
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {payouts.map((p: CampaignCreatorPayout) => (
+          <div key={p.creatorId} className="rounded-2xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-black text-primary">
+                {initials(p.creatorName)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{p.creatorName}</p>
+                <p className="text-xs text-muted">
+                  {formatInr(p.totalApprovedPaise)} approved · {formatInr(p.totalPaidPaise)} paid
+                </p>
+              </div>
+              {p.totalUnpaidPaise > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => setConfirmTarget({ type: "creator", creatorId: p.creatorId, creatorName: p.creatorName })}
+                >
+                  Pay {formatInr(p.totalUnpaidPaise)}
+                </Button>
+              ) : (
+                <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400">
+                  Fully paid
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 divide-y divide-border/50 border-t border-border/50">
+              {p.deliverables.map((d) => (
+                <div key={d.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="capitalize text-muted">{d.platform.replace(/_/g, " ")}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{formatInr(d.paidAmountPaise ?? d.earnedPaise)}</span>
+                    {d.paidAt ? (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
+                        Paid
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted">unpaid</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Campaign detail page ── */
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const role = usePortalRole();
   const isAdmin = role === "admin";
+  const tabs = isAdmin ? [...TABS, { id: "payouts" as const, label: "Payouts" }] : TABS;
   const { getToken } = useAuth();
   const { toast } = useToast();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [searchParams] = useSearchParams();
+  const initialTabParam = searchParams.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    initialTabParam && TABS.some((t) => t.id === initialTabParam) ? initialTabParam : "overview",
+  );
   const [selectedSubmission, setSelectedSubmission] = useState<{ id: string; section: "submissions" | "proof" } | null>(null);
   const [selectedClipper, setSelectedClipper] = useState<ClipperProfile | null>(null);
   const [pendingStatus, setPendingStatus] = useState<"live" | "paused" | null>(null);
@@ -343,6 +499,11 @@ export function CampaignDetailPage() {
   const proofSubmissions = deliverables.filter((d) => ["live_submitted", "proof_under_review", "proof_approved", "proof_rejected"].includes(d.status));
   const reviews  = deliverables.filter((d) => d.status === "under_review");
   const approved = deliverables.filter((d) => ["draft_approved", "proof_approved"].includes(d.status));
+  const proofPending = deliverables.filter((d) => ["live_submitted", "proof_under_review"].includes(d.status));
+  const tabBadgeCounts: Partial<Record<Tab, number>> = {
+    submissions: reviews.length,
+    proof: proofPending.length,
+  };
   const totalClippers = new Set(deliverables.map((d) => d.participationId)).size;
 
   const creatorPerformance = buildCreatorPerformance(deliverables);
@@ -360,9 +521,9 @@ export function CampaignDetailPage() {
 
       {/* ── Side-by-side hero ── */}
       <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-        <div className="flex gap-0">
-          {/* Cover image — fixed width thumbnail */}
-          <div className="relative h-48 w-56 shrink-0 overflow-hidden bg-surface-variant">
+        <div className="flex items-start gap-0">
+          {/* Cover image — 16:9, the standard cover ratio used across the app */}
+          <div className="relative aspect-video w-56 shrink-0 overflow-hidden bg-surface-variant">
             {campaign.coverImageUrl ? (
               <img
                 src={resolveMediaUrl(campaign.coverImageUrl)}
@@ -445,18 +606,26 @@ export function CampaignDetailPage() {
 
       {/* ── Tabs ── */}
       <div className="flex overflow-x-auto border-b border-border">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`relative flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.id ? "text-foreground" : "text-muted hover:text-foreground"
-            }`}
-          >
-            {t.label}
-            {tab === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const badgeCount = tabBadgeCounts[t.id] ?? 0;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`relative flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
+                tab === t.id ? "text-foreground" : "text-muted hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              {badgeCount > 0 && (
+                <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+                  {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+              )}
+              {tab === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Overview ── */}
@@ -561,6 +730,9 @@ export function CampaignDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ── Payouts ── */}
+      {tab === "payouts" && isAdmin && id && <PayoutsPanel campaignId={id} />}
 
       {selectedSubmission && (
         <SubmissionDetailModal

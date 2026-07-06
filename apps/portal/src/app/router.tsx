@@ -5,7 +5,6 @@ import {
   CampaignListSkeleton,
   DetailPageSkeleton,
   PortalShellSkeleton,
-  TableSkeleton,
 } from "@/components/ui/page-skeletons";
 import { AuthLayout } from "@/routes/AuthLayout";
 import { CampaignWizardLayout } from "@/routes/CampaignWizardLayout";
@@ -64,9 +63,24 @@ const AdminBrandDetailPage = lazy(() =>
     default: m.AdminBrandDetailPage,
   })),
 );
+const AdminClippersPage = lazy(() =>
+  import("@/features/admin/pages/AdminClippersPage").then((m) => ({
+    default: m.AdminClippersPage,
+  })),
+);
+const AdminClipperDetailPage = lazy(() =>
+  import("@/features/admin/pages/AdminClipperDetailPage").then((m) => ({
+    default: m.AdminClipperDetailPage,
+  })),
+);
 const AdminProfilePage = lazy(() =>
   import("@/features/admin/pages/AdminProfilePage").then((m) => ({
     default: m.AdminProfilePage,
+  })),
+);
+const AdminTeamPage = lazy(() =>
+  import("@/features/admin/pages/AdminTeamPage").then((m) => ({
+    default: m.AdminTeamPage,
   })),
 );
 const StaffBrandsPage = lazy(() =>
@@ -77,6 +91,16 @@ const StaffBrandsPage = lazy(() =>
 const StaffBrandPage = lazy(() =>
   import("@/features/staff/pages/StaffBrandPage").then((m) => ({
     default: m.StaffBrandPage,
+  })),
+);
+const StaffProfilePage = lazy(() =>
+  import("@/features/staff/pages/StaffProfilePage").then((m) => ({
+    default: m.StaffProfilePage,
+  })),
+);
+const StaffTasksPage = lazy(() =>
+  import("@/features/staff/pages/StaffTasksPage").then((m) => ({
+    default: m.StaffTasksPage,
   })),
 );
 const CampaignsPage = lazy(() =>
@@ -117,17 +141,6 @@ const AdminCampaignInvitePage = lazy(() =>
 const PublicCampaignPage = lazy(() =>
   import("@/features/campaigns/pages/PublicCampaignPage").then((m) => ({
     default: m.PublicCampaignPage,
-  })),
-);
-
-const SubmissionsPage = lazy(() =>
-  import("@/features/submissions/pages/SubmissionsPage").then((m) => ({
-    default: m.SubmissionsPage,
-  })),
-);
-const SubmissionReviewPage = lazy(() =>
-  import("@/features/submissions/pages/SubmissionReviewPage").then((m) => ({
-    default: m.SubmissionReviewPage,
   })),
 );
 
@@ -300,6 +313,14 @@ export const router = createBrowserRouter([
                     element: withSuspense(<DetailPageSkeleton />, <AdminBrandDetailPage />),
                   },
                   {
+                    path: "admin/clippers",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminClippersPage />),
+                  },
+                  {
+                    path: "admin/clippers/:id",
+                    element: withSuspense(<DetailPageSkeleton />, <AdminClipperDetailPage />),
+                  },
+                  {
                     path: "admin/campaigns",
                     element: withSuspense(<CampaignListSkeleton />, <CampaignsPage />),
                   },
@@ -319,20 +340,16 @@ export const router = createBrowserRouter([
                     element: withSuspense(<DetailPageSkeleton />, <CampaignDetailPage />),
                   },
                   {
-                    path: "admin/submissions",
-                    element: withSuspense(<TableSkeleton />, <SubmissionsPage />),
-                  },
-                  {
-                    path: "admin/submissions/:id",
-                    element: withSuspense(<DetailPageSkeleton />, <SubmissionReviewPage />),
-                  },
-                  {
                     path: "admin/analytics",
                     element: withSuspense(<PortalShellSkeleton />, <AnalyticsPage />),
                   },
                   {
                     path: "admin/profile",
                     element: withSuspense(<PortalShellSkeleton />, <AdminProfilePage />),
+                  },
+                  {
+                    path: "admin/team",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminTeamPage />),
                   },
                 ],
               },
@@ -354,6 +371,14 @@ export const router = createBrowserRouter([
                     path: "staff/brands/:brandId",
                     element: withSuspense(<PortalShellSkeleton />, <StaffBrandPage />),
                   },
+                  {
+                    path: "staff/tasks",
+                    element: withSuspense(<PortalShellSkeleton />, <StaffTasksPage />),
+                  },
+                  {
+                    path: "staff/profile",
+                    element: withSuspense(<PortalShellSkeleton />, <StaffProfilePage />),
+                  },
                 ],
               },
             ],
@@ -366,14 +391,6 @@ export const router = createBrowserRouter([
               {
                 path: "campaigns/:id",
                 element: withSuspense(<DetailPageSkeleton />, <CampaignDetailPage />),
-              },
-              {
-                path: "submissions",
-                element: withSuspense(<TableSkeleton />, <SubmissionsPage />),
-              },
-              {
-                path: "submissions/:id",
-                element: withSuspense(<DetailPageSkeleton />, <SubmissionReviewPage />),
               },
             ],
           },

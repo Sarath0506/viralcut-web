@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 
 import { AccountMenu } from "@/components/shell/account-menu";
+import { NotificationBell } from "@/components/shell/notification-bell";
 import { PortalSearch } from "@/components/shell/portal-search";
 import { Button } from "@/components/ui/button";
 import { portalApi } from "@/lib/api";
@@ -49,15 +50,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-muted"
-          aria-label="Notifications"
-        >
-          <Bell className="size-5" />
-        </Button>
+        <NotificationBell />
         <AccountMenu />
       </div>
     </header>

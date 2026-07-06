@@ -1,27 +1,51 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bookmark,
+  Check,
+  FileVideo,
+  Lightbulb,
+  ListChecks,
+  Paperclip,
+} from "lucide-react";
 
-import { Card, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toaster";
 import {
   CampaignWizardFooter,
   CampaignWizardHeader,
+  WizardPage,
 } from "@/features/campaigns/components/campaign-wizard-layout";
 import { ReferenceAssetsEditor } from "@/features/campaigns/components/reference-assets-editor";
 import { SourceAssetsEditor } from "@/features/campaigns/components/source-assets-editor";
 import { RulePointsEditor } from "@/features/campaigns/components/rule-points-editor";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
+import { hasInvalidReferenceAssets } from "@/features/campaigns/lib/campaign-payload";
+import { parseRulePoints } from "@/features/campaigns/lib/rule-points";
 import { normalizeUploadUrl } from "@/lib/media-url";
 import { ApiError, brandApi } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 import { useAuth } from "@/providers/auth-provider";
 
+function CardHeader({ icon: Icon, title }: { icon: typeof Lightbulb; title: string }) {
+  return (
+    <div className="mb-1 flex items-center gap-2">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+    </div>
+  );
+}
+
 export function CampaignBriefPage() {
   const navigate = useNavigate();
   const { goBack, backLabel } = useWizardBack();
-  const { draft, paths, update, saveNow } = useCampaignWizard();
+  const { draft, paths, update, saveNow, saving: autoSaving } = useCampaignWizard();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
@@ -40,122 +64,180 @@ export function CampaignBriefPage() {
     return normalizeUploadUrl(uploaded);
   };
 
+  const doPoints = useMemo(() => parseRulePoints(draft.doRules), [draft.doRules]);
+  const avoidPoints = useMemo(() => parseRulePoints(draft.avoidRules), [draft.avoidRules]);
+  const invalidAssets = hasInvalidReferenceAssets(draft.referenceAssets);
+
+  const checklist = [
+    { label: "Creative brief written", ok: draft.briefHook.trim().length > 0 },
+    { label: "Do points added", ok: doPoints.length > 0 },
+    { label: "Avoid points added", ok: avoidPoints.length > 0 },
+    { label: "Sample content uploaded", ok: draft.referenceAssets.length > 0 && !invalidAssets },
+    { label: "Source assets added", ok: draft.sourceAssets.length > 0 },
+  ];
+  const allDone = checklist.every((item) => item.ok);
+
   return (
     <>
       <WizardStepper />
-      <div className="pb-20">
-        <CampaignWizardHeader
-          title="Campaign Brief & Rules"
-          subtitle="Define the creative direction and campaign guardrails."
-        />
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
-          <div className="space-y-4">
-            <Card>
-              <CardTitle className="text-base">Source Assets</CardTitle>
-              <p className="mt-1 text-xs text-muted">
-                Google Drive or YouTube links creators can use as source material.
-              </p>
-              <div className="mt-4">
-                <SourceAssetsEditor
-                  assets={draft.sourceAssets}
-                  onChange={(sourceAssets) => update({ sourceAssets })}
+      <WizardPage>
+        <div className="pb-24">
+          <CampaignWizardHeader
+            title="Campaign Brief & Rules"
+            subtitle="Define the creative direction and campaign guardrails."
+            saving={autoSaving}
+            onBack={goBack}
+          />
+
+          <div className="mx-auto max-w-[760px] space-y-6">
+            {/* ── Checklist ── */}
+            <div
+              className={cn(
+                "rounded-2xl border p-5",
+                allDone ? "border-money/30 bg-money/[0.04]" : "border-warning/30 bg-warning/[0.04]",
+              )}
+            >
+              <div className="flex items-center gap-2">
+                {allDone ? (
+                  <Check className="h-4 w-4 text-money" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                )}
+                <p className="text-sm font-semibold text-foreground">
+                  {allDone ? "Brief complete" : "Brief checklist"}
+                </p>
+              </div>
+              <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                {checklist.map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                        item.ok ? "bg-money/15 text-money" : "bg-warning/15 text-warning",
+                      )}
+                    >
+                      {item.ok ? (
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      ) : (
+                        <AlertTriangle className="h-3 w-3" />
+                      )}
+                    </span>
+                    <span className={item.ok ? "text-muted" : "font-medium text-foreground"}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Creative brief ── */}
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <CardHeader icon={Lightbulb} title="Creative Brief" />
+              <p className="mb-3 text-xs text-muted">Hook, tone, and key messaging.</p>
+              <textarea
+                className="min-h-[140px] w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted/70 outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+                placeholder="e.g. Open with a bold question in the first 3 seconds. Keep the tone energetic and youth-focused. Highlight the product benefit clearly before the 10-second mark."
+                maxLength={1000}
+                value={draft.briefHook}
+                onChange={(e) => update({ briefHook: e.target.value })}
+              />
+              <p className="mt-1 text-right text-[11px] text-muted">{draft.briefHook.length} / 1000</p>
+            </div>
+
+            {/* ── Guardrails ── */}
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <CardHeader icon={ListChecks} title="Guardrails" />
+              <p className="mb-4 text-xs text-muted">Clear do's and don'ts for creators.</p>
+              <div className="space-y-5">
+                <RulePointsEditor
+                  variant="do"
+                  title="Do this"
+                  description="Add each instruction as its own point."
+                  addLabel="Add do point"
+                  placeholder="e.g. Show the product in the first 3 seconds"
+                  emptyHint="No do points yet. Add what creators should include."
+                  value={draft.doRules}
+                  onChange={(doRules) => update({ doRules })}
+                />
+                <RulePointsEditor
+                  variant="avoid"
+                  title="Avoid this"
+                  description="Add each restriction as its own point."
+                  addLabel="Add avoid point"
+                  placeholder="e.g. Do not mention competitor names"
+                  emptyHint="No avoid points yet. Add what creators must skip."
+                  value={draft.avoidRules}
+                  onChange={(avoidRules) => update({ avoidRules })}
                 />
               </div>
-            </Card>
+            </div>
 
-            <Card>
-              <CardTitle className="text-base">Reference Assets</CardTitle>
-              <p className="mt-1 text-xs text-muted">
-                Upload reference images (post format) or videos (reel format).
-              </p>
-              <div className="mt-4">
-                <ReferenceAssetsEditor
-                  assets={draft.referenceAssets}
-                  onChange={(referenceAssets) => update({ referenceAssets })}
-                  onUploadFile={async (file, type) => {
-                    try {
-                      const url = await uploadReferenceAsset(file, type);
-                      toast("Reference file uploaded.", "success");
-                      return url;
-                    } catch (error) {
-                      toast(
-                        error instanceof ApiError
+            {/* ── Sample content ── */}
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <CardHeader icon={FileVideo} title="Sample Content" />
+              <p className="mb-3 text-xs text-muted">Sample images (post) or videos (reel).</p>
+              <ReferenceAssetsEditor
+                assets={draft.referenceAssets}
+                onChange={(referenceAssets) => update({ referenceAssets })}
+                onUploadFile={async (file, type) => {
+                  try {
+                    const url = await uploadReferenceAsset(file, type);
+                    toast("Sample file uploaded.", "success");
+                    return url;
+                  } catch (error) {
+                    toast(
+                      error instanceof ApiError
+                        ? error.message
+                        : error instanceof Error
                           ? error.message
-                          : error instanceof Error
-                            ? error.message
-                            : "Failed to upload file",
-                        "error",
-                      );
-                      throw error;
-                    }
-                  }}
-                />
-              </div>
-            </Card>
+                          : "Failed to upload file",
+                      "error",
+                    );
+                    throw error;
+                  }
+                }}
+              />
+            </div>
 
-            <RulePointsEditor
-              variant="do"
-              title="Do this"
-              description="Add each instruction as its own point."
-              addLabel="Add do point"
-              placeholder="e.g. Show the product in the first 3 seconds"
-              emptyHint="No do points yet. Add what creators should include."
-              value={draft.doRules}
-              onChange={(doRules) => update({ doRules })}
-            />
-
-            <RulePointsEditor
-              variant="avoid"
-              title="Avoid this"
-              description="Add each restriction as its own point."
-              addLabel="Add avoid point"
-              placeholder="e.g. Do not mention competitor names"
-              emptyHint="No avoid points yet. Add what creators must skip."
-              value={draft.avoidRules}
-              onChange={(avoidRules) => update({ avoidRules })}
-            />
+            {/* ── Source assets ── */}
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <CardHeader icon={Paperclip} title="Source Assets" />
+              <p className="mb-3 text-xs text-muted">Drive or YouTube links creators can use.</p>
+              <SourceAssetsEditor
+                assets={draft.sourceAssets}
+                onChange={(sourceAssets) => update({ sourceAssets })}
+              />
+            </div>
           </div>
 
-          <Card className="h-fit self-start">
-            <CardTitle>Creative Brief</CardTitle>
-            <p className="mt-1 text-xs text-muted">
-              Describe the creative direction, hook, tone, and key messaging for
-              creators.
-            </p>
-            <textarea
-              className="mt-4 min-h-[220px] w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted/70 outline-none ring-0 transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-              placeholder="e.g. Open with a bold question in the first 3 seconds. Keep the tone energetic and youth-focused. Highlight the product benefit clearly before the 10-second mark."
-              value={draft.briefHook}
-              onChange={(e) => update({ briefHook: e.target.value })}
-            />
-          </Card>
-        </div>
-        <CampaignWizardFooter
-          leftAction={{
-            id: "back",
-            label: backLabel,
-            onClick: goBack,
-            buttonProps: { size: "sm", variant: "outline" },
-          }}
-          rightActions={[
-            {
-              id: "save-draft",
-              label: saving ? "Saving..." : "Save as Draft",
-              onClick: () => void saveDraftWithFeedback(toast),
-              buttonProps: { size: "sm", variant: "ghost", disabled: saving },
-            },
-            {
-              id: "next",
-              label: "Next",
-              onClick: () => {
-                void saveNow("payout").then(() => navigate(paths.payout));
+          <CampaignWizardFooter
+            leftAction={{
+              id: "back",
+              label: backLabel,
+              onClick: goBack,
+              buttonProps: { size: "sm", variant: "outline" },
+            }}
+            rightActions={[
+              {
+                id: "save-draft",
+                label: saving ? "Saving..." : "Save as Draft",
+                onClick: () => void saveDraftWithFeedback(toast),
+                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
+                buttonProps: { size: "sm", variant: "outline", disabled: saving },
               },
-              icon: <ArrowRight className="h-4 w-4" />,
-              buttonProps: { size: "sm" },
-            },
-          ]}
-        />
-      </div>
+              {
+                id: "next",
+                label: "Next: Budget",
+                onClick: () => {
+                  void saveNow("payout").then(() => navigate(paths.payout));
+                },
+                icon: <ArrowRight className="h-4 w-4" />,
+                buttonProps: { size: "sm" },
+              },
+            ]}
+          />
+        </div>
+      </WizardPage>
     </>
   );
 }

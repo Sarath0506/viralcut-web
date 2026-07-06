@@ -65,7 +65,7 @@ export function AuthMobileBrandMark({ className }: { className?: string }) {
         <Clapperboard className="size-5 text-white" aria-hidden />
       </div>
       <span className="font-display text-lg font-semibold text-primary">
-        ViralCut
+        Halchal
       </span>
     </div>
   );

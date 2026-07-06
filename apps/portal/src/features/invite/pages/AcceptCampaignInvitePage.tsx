@@ -234,7 +234,7 @@ export function AcceptCampaignInvitePage() {
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              You already have a ViralCut brand account for this email. Accept
+              You already have a Halchal brand account for this email. Accept
               the invite to open the campaign, or sign in first if you prefer.
             </p>
           )}

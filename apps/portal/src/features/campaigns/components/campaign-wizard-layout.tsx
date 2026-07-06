@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import type { ButtonProps } from "@/components/ui/button";
 
 import { Button } from "@/components/ui/button";
@@ -12,17 +13,64 @@ type ActionButton = {
   buttonProps?: Omit<ButtonProps, "onClick" | "children">;
 };
 
+export const WIZARD_SHELL_WIDTH = "max-w-[1100px]";
+
+/** Bounds every wizard step to the same wide shell used by the stepper and footer. */
+export function WizardPage({ children }: { children: ReactNode }) {
+  return <div className={cn("mx-auto w-full", WIZARD_SHELL_WIDTH)}>{children}</div>;
+}
+
 export function CampaignWizardHeader({
   title,
   subtitle,
+  saving,
+  onBack,
 }: {
   title: string;
   subtitle: string;
+  /** When provided, shows a subtle autosave status pill next to the title. */
+  saving?: boolean;
+  /** When provided, renders a square icon back-button before the title. */
+  onBack?: () => void;
 }) {
   return (
-    <div className="mb-5">
-      <h1 className="font-display text-2xl font-bold">{title}</h1>
-      <p className="text-sm text-muted">{subtitle}</p>
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-muted transition hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        )}
+        <div>
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <p className="mt-0.5 text-sm text-muted">{subtitle}</p>
+        </div>
+      </div>
+      {saving !== undefined && (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
+            saving ? "bg-surface-variant text-muted" : "bg-primary/10 text-primary",
+          )}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              Saved
+            </>
+          )}
+        </span>
+      )}
     </div>
   );
 }
@@ -35,8 +83,8 @@ export function CampaignWizardFooter({
   rightActions: ActionButton[];
 }) {
   return (
-    <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-border/80 bg-surface lg:left-56">
-      <div className="mx-auto w-full max-w-[1200px] px-4 py-3 sm:px-6">
+    <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-border/70 bg-surface lg:left-56">
+      <div className={cn("mx-auto w-full px-4 py-3 sm:px-6", WIZARD_SHELL_WIDTH)}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button
             {...leftAction.buttonProps}

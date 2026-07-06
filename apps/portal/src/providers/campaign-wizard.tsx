@@ -30,6 +30,8 @@ export type CampaignDraft = {
   title: string;
   category: string;
   platforms: string[];
+  locationType: "pan_india" | "states";
+  targetStates: string[];
   startDate: string;
   briefHook: string;
   doRules: string;
@@ -50,6 +52,8 @@ const empty: CampaignDraft = {
   title: "",
   category: "",
   platforms: ["instagram_reel"],
+  locationType: "pan_india",
+  targetStates: [],
   startDate: "",
   briefHook: "",
   doRules: "",

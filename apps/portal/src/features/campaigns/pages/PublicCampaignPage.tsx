@@ -162,7 +162,7 @@ export function PublicCampaignPage() {
 
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           {campaign.coverImageUrl && (
-            <div className="h-56 w-full overflow-hidden bg-surface-variant">
+            <div className="aspect-video w-full overflow-hidden bg-surface-variant">
               <img src={resolveMediaUrl(campaign.coverImageUrl)} alt={campaign.title} className="h-full w-full object-cover" />
             </div>
           )}
@@ -278,7 +278,7 @@ export function PublicCampaignPage() {
 
             {campaign.referenceAssets && campaign.referenceAssets.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-6">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Reference Assets</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Sample Content</p>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {campaign.referenceAssets.map((asset, i) => (
                     <a

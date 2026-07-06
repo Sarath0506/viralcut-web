@@ -43,7 +43,7 @@ export function useCampaignDraftSave() {
   const publish = useCallback(async (): Promise<{ id: string }> => {
     if (hasInvalidReferenceAssets(draft.referenceAssets)) {
       throw new Error(
-        "Upload files for all image/video reference assets before publishing.",
+        "Upload files for all image/video sample content before publishing.",
       );
     }
 
