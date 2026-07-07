@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm build:portal",
+  "outputDirectory": "apps/portal/dist",
+  "installCommand": "pnpm install",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

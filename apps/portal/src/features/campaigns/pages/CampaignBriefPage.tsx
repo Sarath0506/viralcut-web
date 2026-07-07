@@ -68,14 +68,24 @@ export function CampaignBriefPage() {
   const avoidPoints = useMemo(() => parseRulePoints(draft.avoidRules), [draft.avoidRules]);
   const invalidAssets = hasInvalidReferenceAssets(draft.referenceAssets);
 
+  const hasValidSourceAssets =
+    draft.sourceAssets.length > 0 &&
+    draft.sourceAssets.every((a) => a.url.trim().length > 0);
+
+  const canContinue =
+    draft.briefHook.trim().length > 0 &&
+    doPoints.length > 0 &&
+    avoidPoints.length > 0 &&
+    hasValidSourceAssets;
+  const allDone = canContinue && (draft.referenceAssets.length === 0 || !invalidAssets);
+
   const checklist = [
-    { label: "Creative brief written", ok: draft.briefHook.trim().length > 0 },
-    { label: "Do points added", ok: doPoints.length > 0 },
-    { label: "Avoid points added", ok: avoidPoints.length > 0 },
-    { label: "Sample content uploaded", ok: draft.referenceAssets.length > 0 && !invalidAssets },
-    { label: "Source assets added", ok: draft.sourceAssets.length > 0 },
+    { label: "Creative brief written", ok: draft.briefHook.trim().length > 0, required: true },
+    { label: "Do points added", ok: doPoints.length > 0, required: true },
+    { label: "Avoid points added", ok: avoidPoints.length > 0, required: true },
+    { label: "Source assets added", ok: hasValidSourceAssets, required: true },
+    { label: "Sample content uploaded (optional)", ok: draft.referenceAssets.length > 0 && !invalidAssets, required: false },
   ];
-  const allDone = checklist.every((item) => item.ok);
 
   return (
     <>
@@ -232,7 +242,7 @@ export function CampaignBriefPage() {
                   void saveNow("payout").then(() => navigate(paths.payout));
                 },
                 icon: <ArrowRight className="h-4 w-4" />,
-                buttonProps: { size: "sm" },
+                buttonProps: { size: "sm", disabled: !canContinue },
               },
             ]}
           />

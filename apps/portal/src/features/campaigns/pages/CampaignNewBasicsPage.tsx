@@ -45,7 +45,7 @@ const CATEGORY_OPTIONS = [
   "Other",
 ];
 
-const MAX_COVER_BYTES = 3 * 1024 * 1024;
+const MAX_COVER_BYTES = 50 * 1024 * 1024;
 
 function ValidCheck() {
   return (
@@ -73,7 +73,7 @@ export function CampaignNewBasicsPage() {
       return;
     }
     if (file.size > MAX_COVER_BYTES) {
-      toast("Cover image must be 3MB or smaller.", "error");
+      toast("Cover image must be 50MB or smaller.", "error");
       return;
     }
     const token = getToken();
@@ -347,7 +347,13 @@ export function CampaignNewBasicsPage() {
                 icon: <ArrowRight className="h-4 w-4" />,
                 buttonProps: {
                   size: "sm",
-                  disabled: !draft.title.trim() || !hasPlatform || !hasValidLocation,
+                  disabled:
+                    !draft.title.trim() ||
+                    !draft.category ||
+                    !draft.coverImageUrl ||
+                    !draft.startDate ||
+                    !hasPlatform ||
+                    !hasValidLocation,
                 },
               },
             ]}
