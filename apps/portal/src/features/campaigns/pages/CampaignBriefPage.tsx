@@ -72,14 +72,18 @@ export function CampaignBriefPage() {
     { label: "Creative brief written", ok: draft.briefHook.trim().length > 0, required: true },
     { label: "Do points added", ok: doPoints.length > 0, required: true },
     { label: "Avoid points added", ok: avoidPoints.length > 0, required: true },
-    { label: "Source assets added", ok: draft.sourceAssets.length > 0, required: true },
+    { label: "Source assets added", ok: hasValidSourceAssets, required: true },
     { label: "Sample content uploaded (optional)", ok: draft.referenceAssets.length > 0 && !invalidAssets, required: false },
   ];
+  const hasValidSourceAssets =
+    draft.sourceAssets.length > 0 &&
+    draft.sourceAssets.every((a) => a.url.trim().length > 0);
+
   const canContinue =
     draft.briefHook.trim().length > 0 &&
     doPoints.length > 0 &&
     avoidPoints.length > 0 &&
-    draft.sourceAssets.length > 0;
+    hasValidSourceAssets;
   const allDone = canContinue && (draft.referenceAssets.length === 0 || !invalidAssets);
 
   return (
