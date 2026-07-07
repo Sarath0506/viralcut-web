@@ -9,10 +9,28 @@ import {
   formatDate,
   type ClipperProfile,
   type CreatorPerformance,
+  type CreatorProfileSnippet,
   type DeliverableForBoard,
 } from "@/features/campaigns/lib/campaign-board-data";
 import { formatPlatformLabel } from "@/features/campaigns/lib/platform-labels";
 import { formatInr } from "@/lib/format";
+
+const PROFILE_PLATFORM_LABELS: Record<string, string> = {
+  instagram: "Instagram",
+  youtube: "YouTube",
+  twitter: "Twitter",
+  tiktok: "TikTok",
+};
+
+function ProfileBadge({ profile }: { profile: CreatorProfileSnippet }) {
+  const platformLabel = PROFILE_PLATFORM_LABELS[profile.platform] ?? profile.platform;
+  const displayLabel = profile.label ?? `@${profile.handle}`;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+      {platformLabel} · {displayLabel}
+    </span>
+  );
+}
 
 export function EmptyState({ message }: { message: string }) {
   return (
@@ -43,7 +61,11 @@ function BoardStageCard({ d, onViewProfile }: { d: DeliverableForBoard; onViewPr
           ) : (
             <p className="truncate text-sm font-semibold">{d.creatorName}</p>
           )}
-          <p className="truncate text-[11px] text-muted">{formatPlatformLabel(d.platform)}</p>
+          {d.creatorProfile ? (
+            <p className="truncate text-[11px] text-muted">@{d.creatorProfile.handle} · {formatPlatformLabel(d.platform)}</p>
+          ) : (
+            <p className="truncate text-[11px] text-muted">{formatPlatformLabel(d.platform)}</p>
+          )}
         </div>
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -112,9 +134,15 @@ export function ClipperProfileCard({ clipper, onOpen }: { clipper: ClipperProfil
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{clipper.creatorName}</p>
-          <p className="truncate text-[11px] text-muted">
-            {clipper.platforms.map(formatPlatformLabel).join(", ")}
-          </p>
+          {clipper.creatorProfile ? (
+            <p className="truncate text-[11px] text-muted">
+              @{clipper.creatorProfile.handle} · {PROFILE_PLATFORM_LABELS[clipper.creatorProfile.platform] ?? clipper.creatorProfile.platform}
+            </p>
+          ) : (
+            <p className="truncate text-[11px] text-muted">
+              {clipper.platforms.map(formatPlatformLabel).join(", ")}
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between text-xs">
@@ -164,6 +192,16 @@ export function ClipperProfileModal({ clipper, onClose }: { clipper: ClipperProf
               <p className="text-xs text-muted">Joined {formatDate(clipper.joinedAt)}</p>
             </div>
           </div>
+
+          {clipper.creatorProfile && (
+            <div className="rounded-xl border border-border bg-surface-variant/50 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Joined as</p>
+              <div className="mt-2 flex items-center gap-2">
+                <ProfileBadge profile={clipper.creatorProfile} />
+                <span className="text-xs text-muted">@{clipper.creatorProfile.handle}</span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Formats</p>
@@ -262,7 +300,11 @@ export function SubmissionCard({ d, onOpen }: { d: DeliverableForBoard; onOpen: 
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold group-hover:text-primary">{d.creatorName}</p>
-          <p className="text-[11px] text-muted">{formatPlatformLabel(d.platform)}</p>
+          {d.creatorProfile ? (
+            <p className="truncate text-[11px] text-muted">@{d.creatorProfile.handle} · {formatPlatformLabel(d.platform)}</p>
+          ) : (
+            <p className="text-[11px] text-muted">{formatPlatformLabel(d.platform)}</p>
+          )}
         </div>
         <StatusPill status={d.status} />
       </div>

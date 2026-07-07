@@ -167,6 +167,13 @@ function SubmissionDetailModal({
                     {d.creator.username && <p className="truncate text-xs text-muted">@{d.creator.username}</p>}
                   </div>
                 </div>
+                {d.creatorProfile && (
+                  <div className="mt-3 rounded-lg border border-border bg-surface px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Submitted as</p>
+                    <p className="mt-1 text-sm font-semibold text-primary">@{d.creatorProfile.handle}</p>
+                    <p className="text-[11px] text-muted capitalize">{d.creatorProfile.platform}{d.creatorProfile.label ? ` · ${d.creatorProfile.label}` : ""}</p>
+                  </div>
+                )}
                 <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => setShowCreatorProfile(true)}>
                   View Profile
                 </Button>

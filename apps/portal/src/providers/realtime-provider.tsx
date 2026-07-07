@@ -22,6 +22,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const invalidateCampaigns = () => {
       void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign"] });
     };
 
     socket.on("campaign:created", invalidateCampaigns);

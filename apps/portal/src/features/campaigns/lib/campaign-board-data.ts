@@ -1,3 +1,9 @@
+export type CreatorProfileSnippet = {
+  platform: string;
+  handle: string;
+  label: string | null;
+};
+
 /** Minimal shape shared by both the authenticated deliverable list and the public read-only one. */
 export type DeliverableForBoard = {
   id: string;
@@ -8,6 +14,7 @@ export type DeliverableForBoard = {
   joinedAt: string;
   creatorId?: string;
   creatorName: string;
+  creatorProfile?: CreatorProfileSnippet | null;
   priorRejectionCount: number;
   viewCount: number;
   likeCount: number;
@@ -51,6 +58,7 @@ export type ClipperProfile = {
   participationId: string;
   creatorId?: string;
   creatorName: string;
+  creatorProfile?: CreatorProfileSnippet | null;
   platforms: string[];
   joinedAt: string;
   deliverables: Array<{ id: string; platform: string; status: string }>;
@@ -65,6 +73,7 @@ export function buildClipperProfiles(deliverables: DeliverableForBoard[]): Clipp
         participationId: d.participationId,
         creatorId: d.creatorId,
         creatorName: d.creatorName,
+        creatorProfile: d.creatorProfile,
         platforms: [],
         joinedAt: d.joinedAt,
         deliverables: [],

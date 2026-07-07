@@ -357,6 +357,14 @@ export type RejectionHistoryEvent = {
   reviewedByDisplayName: string | null;
 };
 
+export type CreatorProfileSnippet = {
+  id: string;
+  platform: string;
+  handle: string;
+  label: string | null;
+  avatarUrl: string | null;
+};
+
 export type DeliverableListItem = {
   id: string;
   platform: string;
@@ -369,6 +377,7 @@ export type DeliverableListItem = {
   joinedAt: string;
   creatorId: string;
   creatorName: string;
+  creatorProfile: CreatorProfileSnippet;
   priorRejectionCount: number;
   viewCount: number;
   likeCount: number;
@@ -402,6 +411,7 @@ export type DeliverableDetail = {
     username: string | null;
     phone: string | null;
   };
+  creatorProfile: CreatorProfileSnippet;
   siblingDeliverables: Array<{
     id: string;
     platform: string;
