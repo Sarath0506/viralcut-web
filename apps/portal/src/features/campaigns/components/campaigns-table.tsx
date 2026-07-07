@@ -58,7 +58,7 @@ export function CampaignsTable({
             >
               <td className="px-4 py-3">
                 <div className="flex min-w-[200px] items-center gap-3">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-variant">
+                  <div className="aspect-video w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-variant">
                     {campaign.coverImageUrl ? (
                       <img
                         src={resolveMediaUrl(campaign.coverImageUrl)}

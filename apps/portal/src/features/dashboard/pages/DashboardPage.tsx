@@ -27,7 +27,7 @@ export function DashboardPage() {
         <KpiCard
           label="Pending reviews"
           value={isPending ? "…" : String(stats?.pendingReviews ?? 0)}
-          href="/submissions"
+          href="/campaigns"
         />
         <KpiCard
           label="Budget used"
@@ -46,7 +46,7 @@ export function DashboardPage() {
             Create campaign
           </Link>
           <Link
-            to="/submissions"
+            to="/campaigns"
             className={buttonVariants({ variant: "outline" })}
           >
             Review submissions

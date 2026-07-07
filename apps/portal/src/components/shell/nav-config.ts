@@ -2,10 +2,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Building2,
+  CheckSquare,
   CreditCard,
   LayoutDashboard,
   Megaphone,
   Settings,
+  UserCog,
+  Users,
 } from "lucide-react";
 
 import type { Portal } from "@/lib/portal";
@@ -37,6 +40,7 @@ const brandNavItems: PortalNavItem[] = [
 const adminNavItems: PortalNavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/brands", label: "Brands", icon: Building2, matchNested: true },
+  { href: "/admin/clippers", label: "Clippers", icon: Users, matchNested: true },
   {
     href: "/admin/campaigns",
     label: "Campaigns",
@@ -44,10 +48,13 @@ const adminNavItems: PortalNavItem[] = [
     matchNested: true,
   },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/team", label: "Team", icon: UserCog },
 ];
 
 const staffNavItems: PortalNavItem[] = [
   { href: "/staff/brands", label: "My Brands", icon: Building2, matchNested: true },
+  { href: "/staff/tasks", label: "My Tasks", icon: CheckSquare },
+  { href: "/staff/profile", label: "Profile", icon: Settings },
 ];
 
 export function getNavForRole(role: Portal): PortalNavItem[] {
@@ -61,6 +68,7 @@ export function resolvePortalTitle(pathname: string, role: Portal): string {
     return "Dashboard";
   }
   if (pathname === "/admin/brands") return "Brands";
+  if (pathname === "/admin/clippers") return "Clippers";
   if (pathname === "/admin/campaigns") return "Campaigns";
   if (pathname === "/campaigns") return "Campaigns";
   if (pathname.startsWith("/campaigns/new") || pathname.startsWith("/admin/campaigns/new")) {
@@ -69,15 +77,12 @@ export function resolvePortalTitle(pathname: string, role: Portal): string {
   if (/^\/campaigns\/[^/]+$/.test(pathname) || /^\/admin\/campaigns\/[^/]+$/.test(pathname)) {
     return "Campaign";
   }
-  if (pathname === "/submissions" || pathname === "/admin/submissions") {
-    return "Submissions";
-  }
-  if (/^\/submissions\/[^/]+$/.test(pathname) || /^\/admin\/submissions\/[^/]+$/.test(pathname)) {
-    return "Review submission";
-  }
   if (pathname === "/analytics" || pathname === "/admin/analytics") return "Analytics";
   if (pathname === "/billing") return "Billing";
   if (pathname === "/settings/brand") return "Settings";
+  if (pathname === "/admin/profile" || pathname === "/staff/profile") return "My Profile";
+  if (pathname === "/admin/team") return "Team";
+  if (pathname === "/staff/tasks") return "My Tasks";
   return role === "admin" ? "Admin Portal" : "Brand Portal";
 }
 

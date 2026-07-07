@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { PortalShellSkeleton } from "@/components/ui/page-skeletons";
+import { CreatorProfileModal } from "@/features/creators/components/CreatorProfileModal";
 import { adminApi } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -101,6 +103,7 @@ function useAdminDashboard() {
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const { data, isPending } = useAdminDashboard();
+  const [viewCreatorId, setViewCreatorId] = useState<string | null>(null);
 
   if (isPending) return <PortalShellSkeleton />;
 
@@ -108,6 +111,7 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {viewCreatorId && <CreatorProfileModal creatorId={viewCreatorId} onClose={() => setViewCreatorId(null)} />}
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight">Admin Dashboard</h1>
         <p className="mt-1 text-sm text-muted">Overview of all brands and campaigns.</p>
@@ -161,7 +165,10 @@ export function AdminDashboardPage() {
                 return (
                   <button
                     key={task.id}
-                    onClick={() => navigate(`/admin/submissions/${task.id}`)}
+                    onClick={() => {
+                      const tab = task.status === "proof_under_review" ? "proof" : "submissions";
+                      navigate(`/campaigns/${task.campaignId}?tab=${tab}`);
+                    }}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-variant"
                   >
                     {/* Status dot */}
@@ -170,7 +177,17 @@ export function AdminDashboardPage() {
                     {/* Main info */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold">{task.creatorName}</p>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewCreatorId(task.creatorId);
+                          }}
+                          className="truncate text-sm font-semibold hover:text-primary hover:underline"
+                        >
+                          {task.creatorName}
+                        </span>
                         <span className="shrink-0 text-[10px] text-muted capitalize">
                           {task.platform.replace(/_/g, " ")}
                         </span>
@@ -227,7 +244,13 @@ export function AdminDashboardPage() {
 
                   {/* Name + views */}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{clipper.creatorName}</p>
+                    <button
+                      type="button"
+                      onClick={() => setViewCreatorId(clipper.creatorId)}
+                      className="truncate text-sm font-semibold hover:text-primary hover:underline"
+                    >
+                      {clipper.creatorName}
+                    </button>
                     <p className="text-xs text-muted">{formatViews(clipper.totalViews)} views</p>
                   </div>
 

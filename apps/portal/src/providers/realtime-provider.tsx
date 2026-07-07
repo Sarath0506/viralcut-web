@@ -22,6 +22,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const invalidateCampaigns = () => {
       void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign"] });
     };
 
     socket.on("campaign:created", invalidateCampaigns);
@@ -45,6 +46,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     socket.on("deliverable:live_proof", invalidateSubmissions);
     socket.on("participation:joined", invalidateSubmissions);
 
+    const invalidateNotifications = () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    };
+    socket.on("notification:new", invalidateNotifications);
+
     return () => {
       socket.off("campaign:created", invalidateCampaigns);
       socket.off("campaign:updated", invalidateCampaigns);
@@ -55,6 +62,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       socket.off("deliverable:reviewed", invalidateSubmissions);
       socket.off("deliverable:live_proof", invalidateSubmissions);
       socket.off("participation:joined", invalidateSubmissions);
+      socket.off("notification:new", invalidateNotifications);
       disconnectSocket();
     };
   }, [auth, getToken, queryClient]);

@@ -181,6 +181,58 @@ type RegisterPayload = {
   acceptTerms: true;
 };
 
+export type PublicReferenceAsset = { type: "image" | "video"; url: string; label?: string };
+export type PublicSourceAsset = { type: "drive" | "youtube"; url: string; label?: string };
+
+export type PublicCampaign = {
+  id: string;
+  title: string;
+  category: string | null;
+  platform: string;
+  platforms: string[];
+  locationType: "pan_india" | "states";
+  targetStates: string[];
+  status: string;
+  brief: string;
+  briefHook: string | null;
+  doRules: string | null;
+  avoidRules: string | null;
+  sourceAssets: PublicSourceAsset[] | null;
+  referenceAssets: PublicReferenceAsset[] | null;
+  coverImageUrl: string | null;
+  productUrl: string | null;
+  startDate: string | null;
+  brandCompanyName: string | null;
+  brandLogoUrl: string | null;
+};
+
+export type PublicDeliverableListItem = {
+  id: string;
+  platform: string;
+  status: string;
+  draftDriveUrl: string | null;
+  livePostUrl: string | null;
+  rejectionReason: string | null;
+  draftSubmittedAt: string | null;
+  participationId: string;
+  joinedAt: string;
+  creatorName: string;
+  priorRejectionCount: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  estimatedPaise: number;
+  siblingDeliverables: Array<{ id: string; platform: string; status: string }>;
+};
+
+export const publicApi = {
+  campaign: (id: string) =>
+    apiFetchPublic<PublicCampaign>(`/public/campaigns/${id}`),
+  deliverables: (id: string) =>
+    apiFetchPublic<PublicDeliverableListItem[]>(`/public/campaigns/${id}/deliverables`),
+};
+
 export const authApi = {
   register: (payload: RegisterPayload) =>
     apiFetch<AuthResponse>("/auth/brand/register", {
@@ -249,6 +301,8 @@ export type Campaign = {
   category: string | null;
   platform: string;
   platforms: string[];
+  locationType: "pan_india" | "states";
+  targetStates: string[];
   status: string;
   brief: string;
   briefHook: string | null;
@@ -288,6 +342,7 @@ export type SubmissionListItem = {
   mediaType: string;
   campaignId: string;
   campaignTitle: string;
+  creatorId: string;
   creatorName: string;
   eligibleViews: number;
   estimatedPaise: number;
@@ -302,6 +357,14 @@ export type RejectionHistoryEvent = {
   reviewedByDisplayName: string | null;
 };
 
+export type CreatorProfileSnippet = {
+  id: string;
+  platform: string;
+  handle: string;
+  label: string | null;
+  avatarUrl: string | null;
+};
+
 export type DeliverableListItem = {
   id: string;
   platform: string;
@@ -311,8 +374,16 @@ export type DeliverableListItem = {
   campaignId: string;
   campaignTitle: string;
   participationId: string;
+  joinedAt: string;
+  creatorId: string;
   creatorName: string;
+  creatorProfile: CreatorProfileSnippet;
   priorRejectionCount: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  estimatedPaise: number;
   siblingDeliverables: Array<{
     id: string;
     platform: string;
@@ -328,15 +399,19 @@ export type DeliverableDetail = {
   livePostUrl: string | null;
   rejectionReason: string | null;
   draftSubmittedAt: string | null;
+  draftReviewedAt: string | null;
+  liveSubmittedAt: string | null;
+  proofReviewedAt: string | null;
   participationId: string;
   rejectionHistory: RejectionHistoryEvent[];
-  campaign: { id: string; title: string; ratePer1kDisplay: string };
+  campaign: { id: string; title: string; status: string; ratePer1kDisplay: string; budgetPaise: number };
   creator: {
     id: string;
     displayName: string | null;
     username: string | null;
     phone: string | null;
   };
+  creatorProfile: CreatorProfileSnippet;
   siblingDeliverables: Array<{
     id: string;
     platform: string;
@@ -357,9 +432,23 @@ export type BrandMe = {
   id: string;
   role: string;
   email: string | null;
+  phone: string | null;
   displayName: string | null;
+  avatarUrl: string | null;
   companyName: string | null;
+  bio: string | null;
+  socialLinks: Record<string, string> | null;
   brandProfile?: { id: string; companyName: string; logoUrl?: string | null } | null;
+};
+
+/** A single linked platform handle (Instagram/YouTube/etc) under one creator login — the "account switcher". */
+export type LinkedCreatorProfile = {
+  id: string;
+  platform: string;
+  handle: string;
+  label: string | null;
+  avatarUrl: string | null;
+  isDefault: boolean;
 };
 
 export type AdminBrand = {
@@ -386,6 +475,72 @@ export type AdminBrandDetail = {
   campaigns: Campaign[];
 };
 
+export type KycStatus = "not_started" | "pending" | "verified";
+
+export type AdminCreatorSummary = {
+  id: string;
+  displayName: string | null;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  kycStatus: KycStatus;
+  isActive: boolean;
+  createdAt: string;
+  campaignCount: number;
+  walletAvailablePaise: number;
+  walletLifetimePaise: number;
+};
+
+export type AdminCreatorCampaignEntry = {
+  campaignId: string;
+  title: string;
+  status: string;
+  coverImageUrl: string | null;
+  viewCount: number;
+  earnedPaise: number;
+};
+
+export type AdminCreatorPayoutMethod = {
+  id: string;
+  type: string;
+  label: string;
+  accountMasked: string;
+  isDefault: boolean;
+};
+
+export type AdminCreatorWithdrawal = {
+  id: string;
+  amountPaise: number;
+  feePaise: number;
+  netPaise: number;
+  status: string;
+  createdAt: string;
+  processedAt: string | null;
+};
+
+export type AdminCreatorDetail = {
+  id: string;
+  displayName: string | null;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  socialLinks: Record<string, string> | null;
+  kycStatus: KycStatus;
+  isActive: boolean;
+  createdAt: string;
+  linkedProfiles: LinkedCreatorProfile[];
+  wallet: { availablePaise: number; pendingPaise: number; lifetimePaise: number };
+  payoutMethods: AdminCreatorPayoutMethod[];
+  withdrawals: AdminCreatorWithdrawal[];
+  runningCampaigns: AdminCreatorCampaignEntry[];
+  pastCampaigns: AdminCreatorCampaignEntry[];
+  totalViews: number;
+  totalEarnedPaise: number;
+};
+
 export type StaffBrand = {
   id: string;
   companyName: string;
@@ -395,12 +550,38 @@ export type StaffBrand = {
   assignedAt: string;
 };
 
+export type StaffAccessLevel = "view_only" | "full";
+
 export type StaffMember = {
   id: string;
   name: string;
   email: string;
   createdAt: string;
-  assignedBrands: { id: string; companyName: string; logoUrl: string | null }[];
+  isActive: boolean;
+  assignedBrands: { id: string; companyName: string; logoUrl: string | null; accessLevel: StaffAccessLevel }[];
+};
+
+export type TaskStatus = "todo" | "in_progress" | "done";
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedTo: { id: string; name: string };
+  brand: { id: string; companyName: string } | null;
+};
+
+export type ActivityLogEntry = {
+  id: string;
+  action: string;
+  label: string;
+  brandName: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 export type CampaignInvite = {
@@ -416,10 +597,11 @@ export type CampaignInvite = {
 const campaignsApi = {
   list: (
     token: string,
-    params?: { status?: string; page?: number; limit?: number },
+    params?: { status?: string; search?: string; page?: number; limit?: number },
   ) => {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
+    if (params?.search) search.set("search", params.search);
     if (params?.page) search.set("page", String(params.page));
     if (params?.limit) search.set("limit", String(params.limit));
     const q = search.toString();
@@ -485,18 +667,6 @@ const submissionsApi = {
     apiFetch<DeliverableListItem[]>(`/submissions/deliverables?campaignId=${campaignId}`, {
       accessToken: token,
     }),
-  list: (token: string, params?: { status?: string; campaignId?: string }) => {
-    const search = new URLSearchParams();
-    if (params?.status) search.set("status", params.status);
-    if (params?.campaignId) search.set("campaignId", params.campaignId);
-    const q = search.toString();
-    return apiFetch<DeliverableListItem[]>(
-      `/submissions/deliverables${q ? `?${q}` : ""}`,
-      {
-        accessToken: token,
-      },
-    );
-  },
   get: (token: string, id: string) =>
     apiFetch<DeliverableDetail>(`/submissions/deliverables/${id}`, {
       accessToken: token,
@@ -514,6 +684,53 @@ const submissionsApi = {
         body: JSON.stringify(body),
       },
     ),
+  approveProof: (token: string, deliverableId: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/submissions/deliverables/${deliverableId}/approve-proof`,
+      { method: "PATCH", accessToken: token },
+    ),
+  rejectProof: (token: string, deliverableId: string, reason: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/submissions/deliverables/${deliverableId}/reject-proof`,
+      {
+        method: "PATCH",
+        accessToken: token,
+        body: JSON.stringify({ reason }),
+      },
+    ),
+  analyticsOverview: (token: string) =>
+    apiFetch<AnalyticsOverview>("/submissions/analytics", { accessToken: token }),
+};
+
+export type AnalyticsOverview = {
+  totals: {
+    totalViews: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalEarningsPaise: number;
+    totalCampaigns: number;
+    totalClippers: number;
+  };
+  campaigns: Array<{
+    id: string;
+    title: string;
+    status: string;
+    coverImageUrl: string | null;
+    totalViews: number;
+    totalEarningsPaise: number;
+    clipperCount: number;
+  }>;
+  topCreators: Array<{
+    creatorId: string;
+    creatorName: string;
+    avatarUrl: string | null;
+    totalViews: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalEarningsPaise: number;
+  }>;
 };
 
 export const portalApi = {
@@ -529,10 +746,48 @@ export const portalApi = {
       { method: "PATCH", body: JSON.stringify(body), accessToken: token },
     ),
 
+  updateProfile: (
+    token: string,
+    body: {
+      displayName?: string;
+      phone?: string;
+      bio?: string;
+      avatarUrl?: string;
+      socialLinks?: Record<string, string>;
+    },
+  ) =>
+    apiFetch<{
+      displayName: string | null;
+      phone: string | null;
+      bio: string | null;
+      avatarUrl: string | null;
+      socialLinks: Record<string, string> | null;
+    }>("/users/me", { method: "PATCH", body: JSON.stringify(body), accessToken: token }),
+
+  changePassword: (
+    token: string,
+    body: { currentPassword: string; newPassword: string },
+  ) =>
+    apiFetch<{ changed: boolean }>("/users/me/change-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
   uploadBrandLogo: (token: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
     return apiFetchForm<{ url: string }>("/users/me/brand-logo", {
+      method: "POST",
+      body: form,
+      accessToken: token,
+    });
+  },
+
+  uploadAvatar: (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiFetchForm<{ url: string }>("/users/me/avatar", {
       method: "POST",
       body: form,
       accessToken: token,
@@ -544,6 +799,29 @@ export const portalApi = {
 
   campaigns: campaignsApi,
   submissions: submissionsApi,
+};
+
+export type CampaignPayoutDeliverable = {
+  id: string;
+  platform: string;
+  viewCount: number;
+  earnedPaise: number;
+  paidAt: string | null;
+  paidAmountPaise: number | null;
+};
+
+export type CampaignCreatorPayout = {
+  creatorId: string;
+  creatorName: string;
+  deliverables: CampaignPayoutDeliverable[];
+  totalApprovedPaise: number;
+  totalUnpaidPaise: number;
+  totalPaidPaise: number;
+};
+
+export type PayoutResult = {
+  paidCount: number;
+  totalPaidPaise: number;
 };
 
 export const adminApi = {
@@ -560,6 +838,7 @@ export const adminApi = {
         status: string;
         platform: string;
         draftSubmittedAt: string | null;
+        creatorId: string;
         creatorName: string;
         campaignId: string;
         campaignTitle: string;
@@ -578,7 +857,23 @@ export const adminApi = {
   brand: (token: string, id: string) =>
     apiFetch<AdminBrandDetail>(`/admin/brands/${id}`, { accessToken: token }),
 
-  createBrand: (token: string, body: { companyName: string; companyEmail: string; pocName?: string; pocPhone?: string; pocEmail?: string }) =>
+  creators: (token: string) =>
+    apiFetch<AdminCreatorSummary[]>("/admin/creators", { accessToken: token }),
+
+  creator: (token: string, id: string) =>
+    apiFetch<AdminCreatorDetail>(`/admin/creators/${id}`, { accessToken: token }),
+
+  uploadBrandLogo: (token: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiFetchForm<{ url: string }>("/admin/brand-logo", {
+      method: "POST",
+      body: form,
+      accessToken: token,
+    });
+  },
+
+  createBrand: (token: string, body: { companyName: string; companyEmail: string; pocName?: string; pocPhone?: string; pocEmail?: string; logoUrl?: string }) =>
     apiFetch<AdminBrand & { tempPassword: string; companyEmail?: string; pocName?: string; pocPhone?: string; pocEmail?: string }>("/admin/brands", {
       method: "POST",
       body: JSON.stringify(body),
@@ -614,22 +909,6 @@ export const adminApi = {
       { method: "DELETE", accessToken: token },
     ),
 
-  approveProof: (token: string, deliverableId: string) =>
-    apiFetch<{ id: string; status: string }>(
-      `/admin/deliverables/${deliverableId}/approve-proof`,
-      { method: "POST", accessToken: token },
-    ),
-
-  rejectProof: (token: string, deliverableId: string, reason: string) =>
-    apiFetch<{ id: string; status: string }>(
-      `/admin/deliverables/${deliverableId}/reject-proof`,
-      {
-        method: "POST",
-        accessToken: token,
-        body: JSON.stringify({ reason }),
-      },
-    ),
-
   campaignsCrud: campaignsApi,
   submissions: submissionsApi,
   stats: (token: string) =>
@@ -646,15 +925,63 @@ export const adminApi = {
       accessToken: token,
     }),
 
-  assignBrand: (token: string, staffId: string, brandId: string) =>
+  assignBrand: (token: string, staffId: string, brandId: string, accessLevel?: StaffAccessLevel) =>
     apiFetch<{ assigned: boolean }>(`/admin/team-members/${staffId}/brands/${brandId}`, {
+      method: "POST",
+      body: JSON.stringify(accessLevel ? { accessLevel } : {}),
+      accessToken: token,
+    }),
+
+  deactivateStaff: (token: string, staffId: string) =>
+    apiFetch<{ deactivated: boolean }>(`/admin/team-members/${staffId}/deactivate`, {
       method: "POST",
       accessToken: token,
     }),
 
+  reactivateStaff: (token: string, staffId: string) =>
+    apiFetch<{ reactivated: boolean }>(`/admin/team-members/${staffId}/reactivate`, {
+      method: "POST",
+      accessToken: token,
+    }),
+
+  getStaffActivity: (token: string, staffId: string) =>
+    apiFetch<ActivityLogEntry[]>(`/admin/team-members/${staffId}/activity`, { accessToken: token }),
+
+  createTask: (token: string, body: { title: string; description?: string; assignedToUserId: string; brandProfileId?: string; dueDate?: string }) =>
+    apiFetch<Task>("/admin/tasks", { method: "POST", body: JSON.stringify(body), accessToken: token }),
+
+  listTasks: (token: string, params?: { staffId?: string; status?: TaskStatus }) => {
+    const search = new URLSearchParams();
+    if (params?.staffId) search.set("staffId", params.staffId);
+    if (params?.status) search.set("status", params.status);
+    const q = search.toString();
+    return apiFetch<Task[]>(`/admin/tasks${q ? `?${q}` : ""}`, { accessToken: token });
+  },
+
+  deleteTask: (token: string, taskId: string) =>
+    apiFetch<{ deleted: boolean }>(`/admin/tasks/${taskId}`, { method: "DELETE", accessToken: token }),
+
   removeBrand: (token: string, staffId: string, brandId: string) =>
     apiFetch<{ removed: boolean }>(`/admin/team-members/${staffId}/brands/${brandId}`, {
       method: "DELETE",
+      accessToken: token,
+    }),
+
+  // Payouts
+  campaignPayouts: (token: string, campaignId: string) =>
+    apiFetch<CampaignCreatorPayout[]>(`/admin/campaigns/${campaignId}/payouts`, {
+      accessToken: token,
+    }),
+
+  payoutAll: (token: string, campaignId: string) =>
+    apiFetch<PayoutResult>(`/admin/campaigns/${campaignId}/payouts/all`, {
+      method: "POST",
+      accessToken: token,
+    }),
+
+  payoutCreator: (token: string, campaignId: string, creatorId: string) =>
+    apiFetch<PayoutResult>(`/admin/campaigns/${campaignId}/payouts/creator/${creatorId}`, {
+      method: "POST",
       accessToken: token,
     }),
 };
@@ -675,4 +1002,64 @@ export const staffApi = {
       body: JSON.stringify(body),
       accessToken: token,
     }),
+
+  listMyTasks: (token: string) =>
+    apiFetch<Task[]>("/staff/tasks", { accessToken: token }),
+
+  updateTaskStatus: (token: string, taskId: string, status: TaskStatus) =>
+    apiFetch<Task>(`/staff/tasks/${taskId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+      accessToken: token,
+    }),
+};
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+};
+
+export const notificationsApi = {
+  list: (token: string) =>
+    apiFetch<AppNotification[]>("/notifications", { accessToken: token }),
+
+  unreadCount: (token: string) =>
+    apiFetch<{ count: number }>("/notifications/unread-count", { accessToken: token }),
+
+  markRead: (token: string, id: string) =>
+    apiFetch<{ read: boolean }>(`/notifications/${id}/read`, { method: "PATCH", accessToken: token }),
+
+  markAllRead: (token: string) =>
+    apiFetch<{ read: boolean }>("/notifications/read-all", { method: "PATCH", accessToken: token }),
+};
+
+export type CreatorCampaignSummary = {
+  campaignId: string;
+  title: string;
+  status: string;
+};
+
+export type CreatorProfile = {
+  id: string;
+  displayName: string | null;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  socialLinks: Record<string, string> | null;
+  createdAt: string;
+  linkedProfiles: LinkedCreatorProfile[];
+  runningCampaigns: CreatorCampaignSummary[];
+  pastCampaigns: CreatorCampaignSummary[];
+};
+
+export const creatorApi = {
+  get: (token: string, id: string) =>
+    apiFetch<CreatorProfile>(`/creators/${id}`, { accessToken: token }),
 };

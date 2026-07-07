@@ -26,13 +26,13 @@ export function hasInvalidReferenceAssets(assets: ReferenceAsset[]): boolean {
 
 export function buildCampaignBody(
   draft: CampaignDraft,
-  status: "draft" | "live",
+  status: "draft" | "live" | "paused" | "closed",
   brandProfileId?: string | null,
 ): Record<string, unknown> {
   const referenceAssets = toApiReferenceAssets(draft.referenceAssets);
   const sourceAssets = toApiSourceAssets(draft.sourceAssets);
   const brief = composeCampaignBrief(draft);
-  const platforms = draft.platforms.length > 0 ? draft.platforms : ["instagram_reel"];
+  const platforms = draft.platforms.length > 0 ? draft.platforms.slice(0, 1) : ["instagram_reel"];
 
   return {
     ...(brandProfileId ? { brandProfileId } : {}),
@@ -40,6 +40,8 @@ export function buildCampaignBody(
     status,
     category: draft.category || undefined,
     platforms,
+    locationType: draft.locationType,
+    targetStates: draft.locationType === "states" ? draft.targetStates : [],
     startDate: draft.startDate || undefined,
     briefHook: draft.briefHook || undefined,
     doRules: draft.doRules || undefined,

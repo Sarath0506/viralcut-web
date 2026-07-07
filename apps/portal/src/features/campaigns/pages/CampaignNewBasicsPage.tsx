@@ -2,54 +2,69 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  ImagePlus,
-  Instagram,
+  Bookmark,
+  Check,
+  ChevronDown,
+  Globe2,
+  Lightbulb,
   Loader2,
-  Twitter,
-  Youtube,
+  MapPin,
+  Upload,
 } from "lucide-react";
 
-import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import {
   CampaignWizardFooter,
   CampaignWizardHeader,
+  WizardPage,
 } from "@/features/campaigns/components/campaign-wizard-layout";
+import { StateMultiSelect } from "@/features/campaigns/components/state-multi-select";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
+import { PLATFORM_OPTIONS } from "@/features/campaigns/lib/platform-options";
 import { normalizeUploadUrl, resolveMediaUrl } from "@/lib/media-url";
 import { ApiError, brandApi } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 
-const INSTAGRAM_REEL = "instagram_reel";
-const INSTAGRAM_POST = "instagram_post";
-const YOUTUBE_SHORTS = "youtube_shorts";
-const TWITTER_TWEET = "twitter_tweet";
-
-const platformCardSelected =
-  "border-primary bg-primary/10 ring-1 ring-primary/20";
-const platformChipSelected =
-  "border-primary bg-primary/15 text-primary";
-const platformChipDefault =
-  "border-border bg-background text-foreground hover:bg-surface-variant";
+const CATEGORY_OPTIONS = [
+  "Fashion",
+  "Beauty",
+  "Tech & Gadgets",
+  "Food & Beverage",
+  "Fitness & Health",
+  "Travel",
+  "Gaming",
+  "Lifestyle",
+  "Entertainment",
+  "Finance",
+  "Education",
+  "Other",
+];
 
 const MAX_COVER_BYTES = 3 * 1024 * 1024;
 
+function ValidCheck() {
+  return (
+    <span className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-money/15 text-money">
+      <Check className="h-3 w-3" strokeWidth={3} />
+    </span>
+  );
+}
+
 export function CampaignNewBasicsPage() {
   const navigate = useNavigate();
-  const { draft, paths, update, saveNow } = useCampaignWizard();
+  const { draft, paths, update, saveNow, saving: autoSaving } = useCampaignWizard();
   const { goBack, backLabel } = useWizardBack();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
-  const selectedPlatforms = new Set(draft.platforms);
+  const selectedPlatform = draft.platforms[0];
 
   const onCoverSelected = async (file: File | undefined) => {
     if (!file) return;
@@ -81,226 +96,70 @@ export function CampaignNewBasicsPage() {
     }
   };
 
-  const togglePlatform = (value: string) => {
-    if (selectedPlatforms.has(value)) {
-      update({ platforms: draft.platforms.filter((item) => item !== value) });
-      return;
-    }
-    update({ platforms: [...draft.platforms, value] });
-  };
-
   const hasPlatform = draft.platforms.length > 0;
-  const hasInstagramReel = selectedPlatforms.has(INSTAGRAM_REEL);
-  const hasInstagramPost = selectedPlatforms.has(INSTAGRAM_POST);
-  const instagramBothSelected = hasInstagramReel && hasInstagramPost;
-  const youtubeSelected = selectedPlatforms.has(YOUTUBE_SHORTS);
-  const twitterSelected = selectedPlatforms.has(TWITTER_TWEET);
+  const hasValidLocation =
+    draft.locationType === "pan_india" || draft.targetStates.length > 0;
 
   return (
     <>
       <WizardStepper />
-      <div className="space-y-6 pb-20">
-        <CampaignWizardHeader
-          title={draft.campaignId ? "Edit Campaign" : "Create New Campaign"}
-          subtitle="Set up your performance-driven creator campaign."
-        />
-        <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
-          <Card className="h-full">
-            <CardTitle className="text-base font-bold text-foreground">
-              Campaign Identity
-            </CardTitle>
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-bold normal-case tracking-normal text-foreground" htmlFor="title">
-                  Campaign Name
-                </Label>
-                <Input
-                  id="title"
-                  value={draft.title}
-                  onChange={(e) => update({ title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-bold normal-case tracking-normal text-foreground" htmlFor="category">
-                  Category
-                </Label>
-                <Input
-                  id="category"
-                  value={draft.category}
-                  onChange={(e) => update({ category: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 md:items-stretch">
-                <div className="flex h-full flex-col space-y-3">
-                  <Label className="text-sm font-bold normal-case tracking-normal text-foreground">
-                    Target Platforms
-                  </Label>
-                  <div className="space-y-3">
-                    <div
-                      className={cn(
-                        "rounded-xl border border-border bg-surface p-3 transition-colors",
-                        instagramBothSelected && platformCardSelected,
-                      )}
-                    >
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface-variant text-muted">
-                          <Instagram className="h-4 w-4" />
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          Instagram
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => togglePlatform(INSTAGRAM_REEL)}
-                          className={cn(
-                            "rounded-lg border px-3 py-2.5 text-center text-sm font-semibold transition",
-                            hasInstagramReel
-                              ? platformChipSelected
-                              : platformChipDefault,
-                          )}
-                        >
-                          Reel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => togglePlatform(INSTAGRAM_POST)}
-                          className={cn(
-                            "rounded-lg border px-3 py-2.5 text-center text-sm font-semibold transition",
-                            hasInstagramPost
-                              ? platformChipSelected
-                              : platformChipDefault,
-                          )}
-                        >
-                          Post
-                        </button>
-                      </div>
-                    </div>
+      <WizardPage>
+        <div className="pb-24">
+          <CampaignWizardHeader
+            title={draft.campaignId ? "Edit Campaign" : "Create New Campaign"}
+            subtitle="Set up your performance-driven creator campaign."
+            saving={draft.campaignId ? autoSaving : undefined}
+            onBack={goBack}
+          />
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => togglePlatform(YOUTUBE_SHORTS)}
-                        className={cn(
-                          "flex flex-col items-center rounded-xl border border-border bg-surface px-3 py-3 transition-colors",
-                          youtubeSelected && platformCardSelected,
-                        )}
-                      >
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface-variant text-muted">
-                          <Youtube className="h-4 w-4" />
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-2 text-sm font-semibold",
-                            youtubeSelected ? "text-primary" : "text-foreground",
-                          )}
-                        >
-                          YouTube
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-0.5 text-xs font-medium",
-                            youtubeSelected ? "text-primary/80" : "text-muted",
-                          )}
-                        >
-                          Shorts
-                        </span>
-                      </button>
+          <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:items-start">
+            {/* ── Left: cover image + tips ── */}
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <p className="text-sm font-semibold text-foreground">Cover image</p>
+                <p className="mt-0.5 text-xs text-muted">16:9 — shown across the app.</p>
 
-                      <button
-                        type="button"
-                        onClick={() => togglePlatform(TWITTER_TWEET)}
-                        className={cn(
-                          "flex flex-col items-center rounded-xl border border-border bg-surface px-3 py-3 transition-colors",
-                          twitterSelected && platformCardSelected,
-                        )}
-                      >
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface-variant text-muted">
-                          <Twitter className="h-4 w-4" />
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-2 text-sm font-semibold",
-                            twitterSelected ? "text-primary" : "text-foreground",
-                          )}
-                        >
-                          Twitter
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-0.5 text-xs font-medium",
-                            twitterSelected ? "text-primary/80" : "text-muted",
-                          )}
-                        >
-                          Tweet
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex h-full flex-col space-y-3">
-                  <Label className="text-sm font-bold normal-case tracking-normal text-foreground">
-                    Campaign Timeline
-                  </Label>
-                  <div className="flex flex-1 flex-col justify-center rounded-xl border border-border bg-surface p-4">
-                    <div className="space-y-2">
-                      <Label
-                        className="text-sm font-bold normal-case tracking-normal text-foreground"
-                        htmlFor="startDate"
-                      >
-                        Start Date
-                      </Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={draft.startDate}
-                        onChange={(e) => update({ startDate: e.target.value })}
-                        className="text-center"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-          <Card className="flex h-full min-h-0 flex-col border-dashed">
-              <CardTitle className="text-base font-bold text-foreground">
-                Campaign Cover Image
-              </CardTitle>
-              <button
-                type="button"
-                disabled={uploadingCover}
-                onClick={() => coverInputRef.current?.click()}
-                className={cn(
-                  "relative mt-4 flex min-h-[280px] flex-1 w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-surface-variant/50 text-muted lg:min-h-0",
-                  uploadingCover && "opacity-70",
-                )}
-              >
-                {draft.coverImageUrl ? (
-                  <img
-                    src={resolveMediaUrl(draft.coverImageUrl)}
-                    alt="Campaign cover preview"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <>
-                    <ImagePlus className="h-7 w-7" />
-                    <span className="mt-2 text-sm font-semibold">No file selected</span>
-                  </>
-                )}
-                <span className="relative z-10 mt-2 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
-                  {uploadingCover ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Uploading...
-                    </span>
-                  ) : draft.coverImageUrl ? (
-                    "Replace cover image"
-                  ) : (
-                    "PNG, JPG, WEBP up to 3MB"
+                <button
+                  type="button"
+                  disabled={uploadingCover}
+                  onClick={() => coverInputRef.current?.click()}
+                  className={cn(
+                    "relative mt-4 block aspect-video w-full overflow-hidden rounded-xl border border-border bg-background",
+                    uploadingCover && "opacity-70",
                   )}
-                </span>
+                >
+                  {draft.coverImageUrl ? (
+                    <img
+                      src={resolveMediaUrl(draft.coverImageUrl)}
+                      alt="Campaign cover preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-linear-to-br from-primary/15 to-primary/5 text-muted">
+                      <Upload className="h-6 w-6 text-primary/40" strokeWidth={1.5} />
+                      <span className="text-xs">No image yet</span>
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={uploadingCover}
+                  onClick={() => coverInputRef.current?.click()}
+                  className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-medium text-foreground transition hover:bg-surface-variant"
+                >
+                  {uploadingCover ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      {draft.coverImageUrl ? "Replace image" : "Upload image"}
+                    </>
+                  )}
+                </button>
                 <input
                   ref={coverInputRef}
                   type="file"
@@ -308,38 +167,193 @@ export function CampaignNewBasicsPage() {
                   className="hidden"
                   onChange={(e) => void onCoverSelected(e.target.files?.[0])}
                 />
-              </button>
-          </Card>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Tips</p>
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  Use a high-quality banner that represents your campaign.
+                </p>
+              </div>
+            </div>
+
+            {/* ── Right: form fields ── */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="title" className="text-sm font-medium text-foreground">
+                  Campaign name
+                </label>
+                <div className="relative">
+                  <Input
+                    id="title"
+                    value={draft.title}
+                    onChange={(e) => update({ title: e.target.value })}
+                    placeholder="e.g. Summer Launch Reels Challenge"
+                    className={draft.title.trim() ? "pr-10" : undefined}
+                  />
+                  {draft.title.trim() && <ValidCheck />}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="category" className="text-sm font-medium text-foreground">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    id="category"
+                    value={draft.category}
+                    onChange={(e) => update({ category: e.target.value })}
+                    className={cn(
+                      "h-11 w-full appearance-none rounded-xl border border-border bg-surface px-4 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      draft.category ? "pr-16" : "pr-9",
+                    )}
+                  >
+                    <option value="">Select a category</option>
+                    {draft.category && !CATEGORY_OPTIONS.includes(draft.category) && (
+                      <option value={draft.category}>{draft.category}</option>
+                    )}
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  {draft.category && (
+                    <span className="absolute right-9 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-money/15 text-money">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Platform</p>
+                <p className="-mt-1.5 text-xs text-muted">The platform creators will post to.</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {PLATFORM_OPTIONS.map(({ value, label, icon: Icon, badge }) => {
+                    const isSelected = selectedPlatform === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => update({ platforms: [value] })}
+                        className={cn(
+                          "relative flex flex-col items-center gap-2 rounded-2xl border bg-surface px-3 py-4 transition",
+                          isSelected
+                            ? "border-primary shadow-[0_0_16px_rgba(99,14,212,0.28)] ring-2 ring-primary/25"
+                            : "border-border hover:border-foreground/20",
+                        )}
+                      >
+                        {isSelected && (
+                          <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                        )}
+                        <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-white", badge)}>
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <span className="text-center text-xs font-medium text-foreground">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Location</p>
+                <p className="-mt-1.5 text-xs text-muted">Select the location for your campaign.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => update({ locationType: "pan_india", targetStates: [] })}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
+                      draft.locationType === "pan_india"
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_16px_rgba(99,14,212,0.3)]"
+                        : "border-border bg-surface text-foreground hover:bg-surface-variant",
+                    )}
+                  >
+                    <Globe2 className="h-4 w-4" />
+                    Pan India
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update({ locationType: "states" })}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
+                      draft.locationType === "states"
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_16px_rgba(99,14,212,0.3)]"
+                        : "border-border bg-surface text-foreground hover:bg-surface-variant",
+                    )}
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Select states
+                  </button>
+                </div>
+
+                {draft.locationType === "states" && (
+                  <div className="pt-1">
+                    <StateMultiSelect
+                      selected={draft.targetStates}
+                      onChange={(targetStates) => update({ targetStates })}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="startDate" className="text-sm font-medium text-foreground">
+                  Start date
+                </label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={draft.startDate}
+                  onChange={(e) => update({ startDate: e.target.value })}
+                  className="max-w-[220px]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <CampaignWizardFooter
+            leftAction={{
+              id: "back",
+              label: backLabel,
+              onClick: goBack,
+              buttonProps: { size: "sm", variant: "outline" },
+            }}
+            rightActions={[
+              {
+                id: "save-draft",
+                label: saving ? "Saving..." : "Save as Draft",
+                onClick: () => void saveDraftWithFeedback(toast),
+                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
+                buttonProps: { size: "sm", variant: "outline", disabled: saving },
+              },
+              {
+                id: "next",
+                label: "Next: Brief & Rules",
+                onClick: () => {
+                  void saveNow("brief").then(() => navigate(paths.brief));
+                },
+                icon: <ArrowRight className="h-4 w-4" />,
+                buttonProps: {
+                  size: "sm",
+                  disabled: !draft.title.trim() || !hasPlatform || !hasValidLocation,
+                },
+              },
+            ]}
+          />
         </div>
-        <CampaignWizardFooter
-          leftAction={{
-            id: "back",
-            label: backLabel,
-            onClick: goBack,
-            buttonProps: { size: "sm", variant: "outline" },
-          }}
-          rightActions={[
-            {
-              id: "save-draft",
-              label: saving ? "Saving..." : "Save as Draft",
-              onClick: () => void saveDraftWithFeedback(toast),
-              buttonProps: { size: "sm", variant: "outline", disabled: saving },
-            },
-            {
-              id: "next",
-              label: "Next",
-              onClick: () => {
-                void saveNow("brief").then(() => navigate(paths.brief));
-              },
-              icon: <ArrowRight className="h-4 w-4" />,
-              buttonProps: {
-                size: "sm",
-                disabled: !draft.title.trim() || !hasPlatform,
-              },
-            },
-          ]}
-        />
-      </div>
+      </WizardPage>
     </>
   );
 }

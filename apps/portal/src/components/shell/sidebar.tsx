@@ -26,6 +26,9 @@ export function Sidebar({
   const profileInitials = (auth?.user.displayName ?? auth?.user.email ?? "A")
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
 
+  const profileHref =
+    role === "admin" ? "/admin/profile" : role === "staff" ? "/staff/profile" : "/settings/brand";
+
   return (
     <>
       <div
@@ -51,7 +54,7 @@ export function Sidebar({
               onClick={onClose}
               className="font-display text-xl font-extrabold tracking-tight text-primary"
             >
-              ViralCut
+              Halchal
             </Link>
             <p className="mt-0.5 text-xs font-medium text-muted">{label}</p>
           </div>
@@ -82,38 +85,24 @@ export function Sidebar({
 
         {/* Profile block at bottom */}
         <div className="shrink-0 border-t border-border p-3">
-          {role === "admin" ? (
-            <Link
-              to="/admin/profile"
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-variant",
-                pathname === "/admin/profile" ? "bg-primary/10 text-primary" : "text-muted",
-              )}
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
-                {profileInitials}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-foreground">
-                  {auth?.user.displayName ?? "My Profile"}
-                </p>
-                <p className="truncate text-[10px] text-muted">{auth?.user.email ?? ""}</p>
-              </div>
-            </Link>
-          ) : (
-            <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
-                {profileInitials}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-foreground">
-                  {auth?.user.displayName ?? auth?.user.email ?? ""}
-                </p>
-                <p className="truncate text-[10px] text-muted">{auth?.user.email ?? ""}</p>
-              </div>
+          <Link
+            to={profileHref}
+            onClick={onClose}
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-surface-variant",
+              pathname === profileHref ? "bg-primary/10 text-primary" : "text-muted",
+            )}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">
+              {profileInitials}
             </div>
-          )}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {auth?.user.displayName ?? auth?.user.email ?? "My Profile"}
+              </p>
+              <p className="truncate text-[10px] text-muted">{auth?.user.email ?? ""}</p>
+            </div>
+          </Link>
         </div>
       </aside>
     </>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toaster";
+import { ProfileSection } from "@/features/settings/components/ProfileSection";
 import { portalApi, ApiError } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -31,7 +32,6 @@ export function BrandSettingsPage() {
   });
 
   const [companyName, setCompanyName] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
 
@@ -39,7 +39,6 @@ export function BrandSettingsPage() {
   const populated = useRef(false);
   if (me && !populated.current) {
     setCompanyName(me.brandProfile?.companyName ?? me.companyName ?? "");
-    setDisplayName(me.displayName ?? "");
     populated.current = true;
   }
 
@@ -56,7 +55,6 @@ export function BrandSettingsPage() {
       }
       return portalApi.updateBrandProfile(token, {
         companyName: companyName.trim() || undefined,
-        displayName: displayName.trim() || undefined,
         logoUrl,
       });
     },
@@ -92,7 +90,7 @@ export function BrandSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-6 max-w-2xl">
       <header>
         <h1 className="font-display text-2xl font-bold">Settings</h1>
         <p className="mt-1 text-sm text-muted">Manage your brand profile.</p>
@@ -131,9 +129,9 @@ export function BrandSettingsPage() {
         </div>
       </Card>
 
-      {/* Profile details */}
+      {/* Company details */}
       <Card>
-        <CardTitle>Account details</CardTitle>
+        <CardTitle>Company details</CardTitle>
         <div className="mt-4 space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted">Company name</label>
@@ -142,18 +140,6 @@ export function BrandSettingsPage() {
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Your company name"
             />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Display name</label>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Email</label>
-            <Input value={me?.email ?? ""} disabled className="opacity-50" />
           </div>
         </div>
 
@@ -167,6 +153,8 @@ export function BrandSettingsPage() {
           </Button>
         </div>
       </Card>
+
+      <ProfileSection />
     </div>
   );
 }

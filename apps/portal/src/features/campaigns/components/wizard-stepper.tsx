@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Check } from "lucide-react";
 
 import { useCampaignWizard } from "@/providers/campaign-wizard";
+import { WIZARD_SHELL_WIDTH } from "@/features/campaigns/components/campaign-wizard-layout";
 import { cn } from "@/lib/utils";
 
 export function WizardStepper() {
@@ -12,92 +13,73 @@ export function WizardStepper() {
   const steps = [
     { path: paths.basics, label: "Details" },
     { path: paths.brief, label: "Brief & Rules" },
-    { path: paths.payout, label: "Timeline" },
+    { path: paths.payout, label: "Budget" },
     { path: paths.review, label: "Review" },
   ];
-  const currentIndex = steps.findIndex((s) => s.path === pathname);
+  const currentIndex = Math.max(steps.findIndex((s) => s.path === pathname), 0);
 
   return (
-    <ol
-      className="mx-auto mb-7 flex w-full max-w-[760px] items-start justify-between px-2"
-      aria-label="Campaign steps"
-    >
-      {steps.map((step, i) => {
-        const completed = i < currentIndex;
-        const active = i === currentIndex;
-        const reachable = canJump;
+    <div className={cn("mx-auto mb-8 w-full", WIZARD_SHELL_WIDTH)}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+        <div className="flex h-1 w-full">
+          {steps.map((step, i) => (
+            <span
+              key={step.path}
+              className={cn("h-full flex-1", i <= currentIndex ? "bg-primary" : "bg-transparent")}
+            />
+          ))}
+        </div>
+        <ol className="flex items-center gap-2 overflow-x-auto px-4 py-4 sm:gap-3 sm:px-6">
+          {steps.map((step, i) => {
+            const completed = i < currentIndex;
+            const active = i === currentIndex;
+            const reachable = canJump && !active;
 
-        const stepCircle = (
-          <span
-            className={cn(
-              "relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors",
-              completed
-                ? "border-money bg-money/10 text-money"
-                : active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : reachable
-                    ? "border-border bg-background text-muted hover:border-primary hover:text-primary"
-                    : "border-border bg-background text-muted",
-            )}
-          >
-            {completed ? <Check className="h-4 w-4" /> : i + 1}
-          </span>
-        );
-
-        const stepLabel = (
-          <span
-            className={cn(
-              "mt-2 text-[11px] font-semibold tracking-wide",
-              active || completed
-                ? "text-foreground"
-                : reachable
-                  ? "text-muted hover:text-primary"
-                  : "text-muted",
-            )}
-          >
-            {step.label}
-          </span>
-        );
-
-        return (
-          <li
-            key={step.path}
-            className="relative flex flex-1 flex-col items-center text-center"
-          >
-            {i > 0 && (
+            const circle = (
               <span
                 className={cn(
-                  "absolute top-4 right-1/2 h-px w-1/2",
-                  completed || active ? "bg-money" : "bg-border",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground shadow-[0_0_14px_rgba(99,14,212,0.45)]"
+                    : completed
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-background text-muted",
                 )}
-              />
-            )}
-            {i < steps.length - 1 && (
-              <span
-                className={cn(
-                  "absolute top-4 left-1/2 h-px w-1/2",
-                  i < currentIndex ? "bg-money" : "bg-border",
-                )}
-              />
-            )}
-            {reachable && !active ? (
-              <Link
-                to={step.path}
-                className="relative z-10 flex flex-col items-center"
-                aria-current={active ? "step" : undefined}
               >
-                {stepCircle}
-                {stepLabel}
-              </Link>
-            ) : (
-              <div className="relative z-10 flex flex-col items-center">
-                {stepCircle}
-                {stepLabel}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+                {completed ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
+              </span>
+            );
+
+            const label = (
+              <span
+                className={cn(
+                  "hidden whitespace-nowrap text-sm font-medium sm:inline",
+                  active ? "text-foreground" : completed ? "text-foreground" : "text-muted",
+                )}
+              >
+                {step.label}
+              </span>
+            );
+
+            return (
+              <li key={step.path} className="flex shrink-0 items-center gap-2 sm:gap-3">
+                {i > 0 && <span className="h-px w-6 shrink-0 bg-border sm:w-10" />}
+                {reachable ? (
+                  <Link to={step.path} className="flex items-center gap-2 sm:gap-3">
+                    {circle}
+                    {label}
+                  </Link>
+                ) : (
+                  <>
+                    {circle}
+                    {label}
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </div>
   );
 }

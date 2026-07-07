@@ -1,21 +1,38 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { Mail, Plus, Search } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PortalShellSkeleton } from "@/components/ui/page-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toaster";
-import { adminApi, ApiError } from "@/lib/api";
+import { adminApi, ApiError, type AdminBrand } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
+type SortKey = "newest" | "name" | "campaigns";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "campaigns", label: "Most campaigns" },
+];
+
+function sortBrands(brands: AdminBrand[], sort: SortKey): AdminBrand[] {
+  const copy = [...brands];
+  if (sort === "name") return copy.sort((a, b) => a.companyName.localeCompare(b.companyName));
+  if (sort === "campaigns") return copy.sort((a, b) => b.campaignCount - a.campaignCount);
+  return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 const ACCENTS = [
-  { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20", stat: "text-violet-400" },
-  { bg: "bg-blue-500/10",   text: "text-blue-400",   border: "border-blue-500/20",   stat: "text-blue-400"   },
-  { bg: "bg-emerald-500/10",text: "text-emerald-400",border: "border-emerald-500/20",stat: "text-emerald-400"},
-  { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20", stat: "text-orange-400" },
-  { bg: "bg-pink-500/10",   text: "text-pink-400",   border: "border-pink-500/20",   stat: "text-pink-400"   },
-  { bg: "bg-cyan-500/10",   text: "text-cyan-400",   border: "border-cyan-500/20",   stat: "text-cyan-400"   },
+  { bg: "bg-violet-500/10",  text: "text-violet-400"  },
+  { bg: "bg-blue-500/10",    text: "text-blue-400"    },
+  { bg: "bg-emerald-500/10", text: "text-emerald-400" },
+  { bg: "bg-orange-500/10",  text: "text-orange-400"  },
+  { bg: "bg-pink-500/10",    text: "text-pink-400"    },
+  { bg: "bg-cyan-500/10",    text: "text-cyan-400"    },
 ];
 
 function accentFor(name: string) {
@@ -42,23 +59,40 @@ function CreateBrandModal({ onClose }: { onClose: () => void }) {
   const { getToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [companyName, setCompanyName] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
   const [pocName, setPocName] = useState("");
   const [pocPhone, setPocPhone] = useState("");
   const [pocEmail, setPocEmail] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [created, setCreated] = useState<{ companyName: string; companyEmail: string; tempPassword: string } | null>(null);
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
   const mutation = useMutation({
-    mutationFn: () =>
-      adminApi.createBrand(getToken()!, {
+    mutationFn: async () => {
+      let logoUrl: string | undefined;
+      if (logoFile) {
+        const res = await adminApi.uploadBrandLogo(getToken()!, logoFile);
+        logoUrl = res.url;
+      }
+      return adminApi.createBrand(getToken()!, {
         companyName: companyName.trim(),
         companyEmail: companyEmail.trim(),
         pocName: pocName.trim() || undefined,
         pocPhone: pocPhone.trim() || undefined,
         pocEmail: pocEmail.trim() || undefined,
-      }),
+        logoUrl,
+      });
+    },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-brands"] });
       setCreated({ companyName: data.companyName, companyEmail: data.companyEmail ?? data.email ?? "", tempPassword: data.tempPassword });
@@ -113,6 +147,36 @@ function CreateBrandModal({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Logo */}
+              <div className="flex items-center gap-4 rounded-xl border border-border bg-surface-variant/50 p-4">
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo preview" className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-primary/30" />
+                ) : companyName.trim() ? (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary">
+                    {initials(companyName)}
+                  </div>
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+                    </svg>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    {logoFile ? "Change logo" : "Upload logo"}
+                  </Button>
+                  <p className="text-xs text-muted">PNG, JPG or WebP · Max 5 MB</p>
+                </div>
+              </div>
+
               {/* Company info */}
               <div className="rounded-xl border border-border bg-surface-variant/50 p-4 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Company</p>
@@ -159,6 +223,8 @@ export function AdminBrandsPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("newest");
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-brands"],
@@ -166,16 +232,42 @@ export function AdminBrandsPage() {
     enabled: Boolean(getToken()),
   });
 
-  if (isPending) return <PortalShellSkeleton />;
+  if (isPending) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <Skeleton className="h-11 w-36 rounded-xl" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="h-10 flex-1 rounded-xl" />
+          <Skeleton className="h-10 w-40 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-[132px] w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const brands = data ?? [];
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? brands.filter((b) => b.companyName.toLowerCase().includes(q) || (b.email ?? "").toLowerCase().includes(q))
+    : brands;
+  const visible = sortBrands(filtered, sort);
 
   return (
     <>
       {showCreate && <CreateBrandModal onClose={() => setShowCreate(false)} />}
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold tracking-tight">Brands</h1>
             <p className="mt-1 text-sm text-muted">
@@ -183,59 +275,105 @@ export function AdminBrandsPage() {
             </p>
           </div>
           <Button onClick={() => setShowCreate(true)} className="gap-2">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="h-4 w-4" strokeWidth={2} />
             Create Brand
           </Button>
         </div>
+
+        {brands.length > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="relative flex h-10 flex-1 items-center">
+              <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted" aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or email…"
+                className="h-full w-full rounded-xl border border-border bg-surface py-2 pr-3 pl-9 text-sm text-foreground placeholder:text-muted focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+              />
+            </label>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="h-10 rounded-xl border border-border bg-surface px-3 text-sm text-foreground focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {brands.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface py-16 text-center">
             <p className="font-medium">No brands yet</p>
             <p className="mt-1 text-sm text-muted">Create the first brand to get started.</p>
             <Button className="mt-4 gap-2" onClick={() => setShowCreate(true)}>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="h-4 w-4" strokeWidth={2} />
               Create Brand
             </Button>
           </div>
+        ) : visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface py-16 text-center">
+            <p className="font-medium">No brands match "{query}"</p>
+            <p className="mt-1 text-sm text-muted">Try a different name or email.</p>
+            <Button variant="outline" className="mt-4" onClick={() => setQuery("")}>Clear search</Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {brands.map((brand) => {
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visible.map((brand) => {
               const accent = accentFor(brand.companyName);
+              const isActive = brand.campaignCount > 0;
               return (
                 <div
                   key={brand.id}
                   onClick={() => navigate(`/admin/brands/${brand.id}`)}
-                  className={`group cursor-pointer overflow-hidden rounded-2xl border bg-surface transition-all hover:shadow-lg ${accent.border}`}
+                  className="group cursor-pointer rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md"
                 >
-                  <div className={`flex h-28 items-center justify-center ${accent.bg}`}>
-                    {brand.logoUrl ? (
-                      <img src={brand.logoUrl} alt={brand.companyName} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className={`text-5xl font-black tracking-tight ${accent.text}`}>
-                        {initials(brand.companyName)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="px-4 py-3">
-                    <p className="truncate font-semibold leading-tight">{brand.companyName}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted">{brand.email ?? "—"}</p>
-                  </div>
-
-                  <div className={`flex divide-x border-t ${accent.border} divide-border/50`}>
-                    <div className="flex flex-1 flex-col items-center py-2.5">
-                      <span className={`text-base font-bold ${accent.stat}`}>{brand.campaignCount}</span>
-                      <span className="text-[10px] text-muted">Campaigns</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-black",
+                          accent.bg,
+                          accent.text,
+                        )}
+                      >
+                        {brand.logoUrl ? (
+                          <img src={brand.logoUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          initials(brand.companyName)
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold leading-tight">{brand.companyName}</p>
+                        <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
+                          <Mail className="h-3 w-3 shrink-0" strokeWidth={2} />
+                          {brand.email ?? "—"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex flex-1 flex-col items-center py-2.5">
-                      <span className="text-sm font-semibold">
+                    <span
+                      className={cn(
+                        "mt-1 h-2 w-2 shrink-0 rounded-full",
+                        isActive ? "bg-emerald-400" : "bg-muted/40",
+                      )}
+                      title={isActive ? "Active" : "New"}
+                    />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/60 pt-3 text-center">
+                    <div>
+                      <p className={cn("text-base font-bold leading-none", accent.text)}>
+                        {brand.campaignCount}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted">Campaigns</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold leading-none text-foreground">
                         {new Date(brand.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                      </span>
-                      <span className="text-[10px] text-muted">Joined</span>
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted">Joined</p>
                     </div>
                   </div>
                 </div>

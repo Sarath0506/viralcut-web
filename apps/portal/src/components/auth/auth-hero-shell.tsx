@@ -18,7 +18,7 @@ export function AuthHeroBrandMark({ className }: { className?: string }) {
         />
       </div>
       <span className="font-display text-lg font-semibold tracking-tight text-white xl:text-xl">
-        ViralCut
+        Halchal
       </span>
     </div>
   );

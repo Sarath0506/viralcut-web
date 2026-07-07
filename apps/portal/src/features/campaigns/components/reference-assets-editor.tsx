@@ -84,7 +84,7 @@ export function ReferenceAssetsEditor({
 
       {assets.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface-variant/30 px-4 py-6 text-center text-sm text-muted">
-          Upload reference images (post format) or videos (reel format) for creators.
+          Upload sample images (post format) or videos (reel format) for creators.
         </div>
       ) : (
         <ul className="space-y-2">
@@ -142,7 +142,7 @@ export function ReferenceAssetsEditor({
                   {asset.url && asset.type === "image" ? (
                     <img
                       src={resolveMediaUrl(asset.url)}
-                      alt={asset.label || "Reference preview"}
+                      alt={asset.label || "Sample preview"}
                       className="h-20 w-full rounded-lg border border-border object-cover"
                     />
                   ) : null}

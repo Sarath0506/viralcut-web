@@ -31,7 +31,7 @@ export function AccountMenu() {
   const { data: me } = useQuery({
     queryKey: ["me", role],
     queryFn: () => portalApi.me(token!),
-    enabled: Boolean(token && !isAdmin),
+    enabled: Boolean(token),
   });
 
   useEffect(() => {
@@ -55,6 +55,9 @@ export function AccountMenu() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  const profileHref =
+    role === "admin" ? "/admin/profile" : role === "staff" ? "/staff/profile" : "/settings/brand";
 
   const isDark = mounted && (resolvedTheme === "dark" || theme === "dark");
   const label = isAdmin
@@ -83,9 +86,13 @@ export function AccountMenu() {
           className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-xs font-bold text-primary"
           aria-hidden
         >
-          {initials(
-            me?.displayName ?? auth?.user.displayName ?? null,
-            me?.email ?? auth?.user.email ?? null,
+          {me?.avatarUrl ? (
+            <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials(
+              me?.displayName ?? auth?.user.displayName ?? null,
+              me?.email ?? auth?.user.email ?? null,
+            )
           )}
         </span>
         <span className="hidden min-w-0 truncate text-sm font-semibold text-foreground sm:block">
@@ -116,17 +123,15 @@ export function AccountMenu() {
             </p>
           </div>
 
-          {!isAdmin ? (
-            <Link
-              to="/settings/brand"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-surface-variant"
-              onClick={() => setOpen(false)}
-            >
-              <Settings className="size-4 text-muted" />
-              Settings
-            </Link>
-          ) : null}
+          <Link
+            to={profileHref}
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-surface-variant"
+            onClick={() => setOpen(false)}
+          >
+            <Settings className="size-4 text-muted" />
+            {isAdmin ? "My Profile" : "Settings"}
+          </Link>
 
           <button
             type="button"

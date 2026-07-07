@@ -40,11 +40,14 @@ export function campaignToDraft(campaign: Campaign): CampaignDraft {
 
   return {
     campaignId: campaign.id,
+    status: campaign.status as CampaignDraft["status"],
     ownership: campaign.ownership,
     inviteAcceptedAt: campaign.inviteAcceptedAt,
     title: campaign.title,
     category: campaign.category ?? "",
-    platforms,
+    platforms: platforms.slice(0, 1),
+    locationType: campaign.locationType ?? "pan_india",
+    targetStates: campaign.targetStates ?? [],
     startDate: toDateInputValue(campaign.startDate),
     briefHook: campaign.briefHook ?? "",
     doRules: campaign.doRules ?? "",
