@@ -21,8 +21,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     const invalidateCampaigns = () => {
       void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      void queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
       void queryClient.invalidateQueries({ queryKey: ["campaign"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-deliverables"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-payouts"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-invites"] });
+      void queryClient.invalidateQueries({ queryKey: ["analytics-overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["brand-stats"] });
     };
 
     socket.on("campaign:created", invalidateCampaigns);
@@ -36,9 +40,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     });
 
     const invalidateSubmissions = () => {
-      void queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-deliverables"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-payouts"] });
       void queryClient.invalidateQueries({ queryKey: ["submission"] });
-      void queryClient.invalidateQueries({ queryKey: ["stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      void queryClient.invalidateQueries({ queryKey: ["analytics-overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["brand-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     };
 
     socket.on("deliverable:submitted", invalidateSubmissions);
@@ -64,6 +72,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       socket.off("participation:joined", invalidateSubmissions);
       socket.off("notification:new", invalidateNotifications);
       disconnectSocket();
+
     };
   }, [auth, getToken, queryClient]);
 
