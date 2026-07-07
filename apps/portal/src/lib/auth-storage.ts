@@ -1,6 +1,6 @@
 import type { AuthResponse } from "./api";
 
-const STORAGE_KEY = "viralcut.auth";
+const STORAGE_KEY = "halchal.auth";
 
 export function getStoredAuth(): AuthResponse | null {
   if (typeof window === "undefined") return null;

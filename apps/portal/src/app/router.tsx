@@ -1,4 +1,8 @@
 import { lazy, Suspense } from "react";
+import { LandingPage } from "@/features/landing/pages/LandingPage";
+import { DeleteAccountPage } from "@/features/legal/pages/DeleteAccountPage";
+import { PrivacyPolicyPage } from "@/features/legal/pages/PrivacyPolicyPage";
+import { TermsPage } from "@/features/legal/pages/TermsPage";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import {
@@ -214,10 +218,22 @@ export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <LandingPage /> },
       {
         path: "share/campaigns/:id",
         element: withSuspense(null, <PublicCampaignPage />),
+      },
+      {
+        path: "privacy",
+        element: <PrivacyPolicyPage />,
+      },
+      {
+        path: "terms",
+        element: <TermsPage />,
+      },
+      {
+        path: "delete-account",
+        element: <DeleteAccountPage />,
       },
       {
         element: <GuestRoute />,
