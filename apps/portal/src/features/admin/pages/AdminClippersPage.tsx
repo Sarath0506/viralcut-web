@@ -1,12 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { adminApi, type AdminCreatorSummary, type KycStatus } from "@/lib/api";
-import { formatInr } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { ClipperCard } from "@/features/admin/components/clipper-card";
+import { adminApi, type AdminCreatorSummary } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
 type SortKey = "newest" | "name" | "earnings" | "campaigns";
@@ -17,35 +15,6 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "earnings", label: "Most earned" },
   { value: "campaigns", label: "Most campaigns" },
 ];
-
-const KYC_STYLE: Record<KycStatus, string> = {
-  verified: "bg-emerald-500/15 text-emerald-400",
-  pending: "bg-warning/15 text-warning",
-  not_started: "bg-surface-variant text-muted",
-};
-
-const KYC_LABEL: Record<KycStatus, string> = {
-  verified: "KYC Verified",
-  pending: "KYC Pending",
-  not_started: "No KYC",
-};
-
-const ACCENTS = [
-  { bg: "bg-violet-500/10",  text: "text-violet-400"  },
-  { bg: "bg-blue-500/10",    text: "text-blue-400"    },
-  { bg: "bg-emerald-500/10", text: "text-emerald-400" },
-  { bg: "bg-orange-500/10",  text: "text-orange-400"  },
-  { bg: "bg-pink-500/10",    text: "text-pink-400"    },
-  { bg: "bg-cyan-500/10",    text: "text-cyan-400"    },
-];
-
-function accentFor(name: string) {
-  return ACCENTS[name.charCodeAt(0) % ACCENTS.length];
-}
-
-function initials(name: string) {
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "C";
-}
 
 function sortCreators(creators: AdminCreatorSummary[], sort: SortKey): AdminCreatorSummary[] {
   const copy = [...creators];
@@ -58,7 +27,6 @@ function sortCreators(creators: AdminCreatorSummary[], sort: SortKey): AdminCrea
 
 export function AdminClippersPage() {
   const { getToken } = useAuth();
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
 
@@ -147,68 +115,9 @@ export function AdminClippersPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visible.map((c) => {
-            const name = c.displayName ?? c.username ?? "Creator";
-            const accent = accentFor(name);
-            return (
-              <div
-                key={c.id}
-                onClick={() => navigate(`/admin/clippers/${c.id}`)}
-                className="group cursor-pointer rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-black",
-                        accent.bg,
-                        accent.text,
-                      )}
-                    >
-                      {c.avatarUrl ? (
-                        <img src={c.avatarUrl} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        initials(name)
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="truncate font-semibold leading-tight">{name}</p>
-                        {!c.isActive && (
-                          <span className="shrink-0 rounded-full bg-muted/20 px-1.5 py-0.5 text-[9px] font-bold text-muted">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
-                        <Mail className="h-3 w-3 shrink-0" strokeWidth={2} />
-                        {c.email ?? c.phone ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                      KYC_STYLE[c.kycStatus],
-                    )}
-                  >
-                    {KYC_LABEL[c.kycStatus]}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/60 pt-3 text-center">
-                  <div>
-                    <p className={cn("text-base font-bold leading-none", accent.text)}>{c.campaignCount}</p>
-                    <p className="mt-1 text-[10px] text-muted">Campaigns</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold leading-none text-foreground">{formatInr(c.walletLifetimePaise)}</p>
-                    <p className="mt-1 text-[10px] text-muted">Lifetime earned</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {visible.map((c) => (
+            <ClipperCard key={c.id} creator={c} />
+          ))}
         </div>
       )}
     </div>

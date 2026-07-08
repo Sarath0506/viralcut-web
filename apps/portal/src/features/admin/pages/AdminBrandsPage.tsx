@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toaster";
+import { BrandCard } from "@/features/admin/components/brand-card";
 import { adminApi, ApiError, type AdminBrand } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -24,19 +23,6 @@ function sortBrands(brands: AdminBrand[], sort: SortKey): AdminBrand[] {
   if (sort === "name") return copy.sort((a, b) => a.companyName.localeCompare(b.companyName));
   if (sort === "campaigns") return copy.sort((a, b) => b.campaignCount - a.campaignCount);
   return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
-
-const ACCENTS = [
-  { bg: "bg-violet-500/10",  text: "text-violet-400"  },
-  { bg: "bg-blue-500/10",    text: "text-blue-400"    },
-  { bg: "bg-emerald-500/10", text: "text-emerald-400" },
-  { bg: "bg-orange-500/10",  text: "text-orange-400"  },
-  { bg: "bg-pink-500/10",    text: "text-pink-400"    },
-  { bg: "bg-cyan-500/10",    text: "text-cyan-400"    },
-];
-
-function accentFor(name: string) {
-  return ACCENTS[name.charCodeAt(0) % ACCENTS.length];
 }
 
 function initials(name: string) {
@@ -221,7 +207,6 @@ function CreateBrandModal({ onClose }: { onClose: () => void }) {
 /* ── Brands Page ── */
 export function AdminBrandsPage() {
   const { getToken } = useAuth();
-  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -321,64 +306,9 @@ export function AdminBrandsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {visible.map((brand) => {
-              const accent = accentFor(brand.companyName);
-              const isActive = brand.campaignCount > 0;
-              return (
-                <div
-                  key={brand.id}
-                  onClick={() => navigate(`/admin/brands/${brand.id}`)}
-                  className="group cursor-pointer rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-black",
-                          accent.bg,
-                          accent.text,
-                        )}
-                      >
-                        {brand.logoUrl ? (
-                          <img src={brand.logoUrl} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          initials(brand.companyName)
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold leading-tight">{brand.companyName}</p>
-                        <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
-                          <Mail className="h-3 w-3 shrink-0" strokeWidth={2} />
-                          {brand.email ?? "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={cn(
-                        "mt-1 h-2 w-2 shrink-0 rounded-full",
-                        isActive ? "bg-emerald-400" : "bg-muted/40",
-                      )}
-                      title={isActive ? "Active" : "New"}
-                    />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/60 pt-3 text-center">
-                    <div>
-                      <p className={cn("text-base font-bold leading-none", accent.text)}>
-                        {brand.campaignCount}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted">Campaigns</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold leading-none text-foreground">
-                        {new Date(brand.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted">Joined</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {visible.map((brand) => (
+              <BrandCard key={brand.id} brand={brand} />
+            ))}
           </div>
         )}
       </div>
