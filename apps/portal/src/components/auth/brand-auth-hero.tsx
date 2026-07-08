@@ -87,21 +87,21 @@ export function BrandAuthHero({ variant }: { variant: BrandAuthHeroVariant }) {
     <AuthHeroShell
       footer={
         <p className={authHeroFooterClass}>
-          Trusted by 500+ Indian Enterprise Brands
+          India&apos;s regional-first clipping platform
         </p>
       }
     >
       <HeroCopyBlock>
         <div className="shrink-0">
           <h1 className={authHeroTitleClass}>
-            Run campaigns.
+            Every view, verified.
             <br />
-            <span className="text-violet-200">Get authentic clips.</span>
+            <span className="text-violet-200">Every region, covered.</span>
           </h1>
           <p className={authHeroBodyClass}>
-            Scale your creator marketing across India with performance-based
-            orchestration. Connect with verified influencers and track every
-            conversion in real-time.
+            Sign in to review clipper submissions, track live campaigns, and
+            pay only for views we&apos;ve independently verified — across
+            every state and language you target.
           </p>
         </div>
 

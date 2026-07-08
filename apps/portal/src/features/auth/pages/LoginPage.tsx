@@ -58,8 +58,8 @@ export function LoginPage() {
       <AuthMobileBrandMark />
 
       <AuthPageHeader
-        title="Welcome Back"
-        description="Log in to manage your creator campaigns and performance metrics."
+        title="Welcome back"
+        description="Sign in to manage campaigns, review clipper submissions, and track verified views."
       />
 
       <form onSubmit={onSubmit} className={authFormClass}>

@@ -1,7 +1,7 @@
-import { Clapperboard } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { BrandAuthHero, type BrandAuthHeroVariant } from "@/components/auth/brand-auth-hero";
+import { HalchalMark } from "@/components/brand/halchal-mark";
 import { cn } from "@/lib/utils";
 
 export interface AuthSplitLayoutProps {
@@ -61,8 +61,8 @@ export function AuthSplitLayout({
 export function AuthMobileBrandMark({ className }: { className?: string }) {
   return (
     <div className={cn("mb-5 flex items-center gap-2 lg:hidden", className)}>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-        <Clapperboard className="size-5 text-white" aria-hidden />
+      <div className="flex h-8 shrink-0 items-center justify-center rounded-lg bg-[#07091A] px-1.5">
+        <HalchalMark className="h-5 w-auto" animated={false} />
       </div>
       <span className="font-display text-lg font-semibold text-primary">
         Halchal

@@ -1,4 +1,3 @@
-import { Clapperboard } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
@@ -6,17 +5,13 @@ import {
   AUTH_HERO_INNER_CLASS,
   AUTH_HERO_PANEL_CLASS,
 } from "@/components/auth/auth-hero-panel";
+import { HalchalMark } from "@/components/brand/halchal-mark";
 import { cn } from "@/lib/utils";
 
 export function AuthHeroBrandMark({ className }: { className?: string }) {
   return (
     <div className={cn("flex shrink-0 items-center gap-2.5", className)}>
-      <div className="flex size-10 items-center justify-center rounded-lg bg-white shadow-sm">
-        <Clapperboard
-          className="size-6 fill-primary text-primary"
-          aria-hidden
-        />
-      </div>
+      <HalchalMark className="h-8 w-auto" />
       <span className="font-display text-lg font-semibold tracking-tight text-white xl:text-xl">
         Halchal
       </span>
