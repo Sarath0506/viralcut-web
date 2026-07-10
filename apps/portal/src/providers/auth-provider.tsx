@@ -64,12 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectSocket(session.tokens.accessToken);
       },
       onSessionExpired: () => {
-        const role = getStoredAuth()?.user.role;
         clearStoredAuth();
         setAuth(null);
-        navigate(role === "admin" ? "/admin/login" : "/login", {
-          replace: true,
-        });
+        navigate("/login", { replace: true });
       },
     });
   }, [navigate]);
@@ -124,9 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       clearStoredAuth();
       setAuth(null);
-      const loginPath =
-        auth?.user.role === "admin" ? "/admin/login" : "/login";
-      navigate(safeRedirectPath(redirectTo ?? loginPath), { replace: true });
+      navigate(safeRedirectPath(redirectTo ?? "/login"), { replace: true });
     },
     [auth, navigate],
   );

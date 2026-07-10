@@ -37,7 +37,15 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password, "brand", redirectTo);
+      try {
+        await login(email, password, "brand", redirectTo);
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "WRONG_PORTAL") {
+          await login(email, password, "admin", redirectTo);
+        } else {
+          throw err;
+        }
+      }
       toast("Welcome back!");
     } catch (err) {
       toast(
@@ -109,12 +117,6 @@ export function LoginPage() {
         New brand?{" "}
         <Link to="/signup" className={authFooterLinkClass}>
           Create account
-        </Link>
-      </p>
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        Admin?{" "}
-        <Link to="/admin/login" className="font-medium text-primary hover:underline">
-          Admin login
         </Link>
       </p>
     </AuthSplitLayout>
