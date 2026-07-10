@@ -58,12 +58,12 @@ const sections = [
   {
     icon: FileText,
     title: "9. Governing Law",
-    body: "These Terms and Conditions are governed by and construed in accordance with the laws of India. Any disputes arising under these terms shall be subject to the exclusive jurisdiction of the courts in Bengaluru, Karnataka, India.",
+    body: "These Terms and Conditions are governed by and construed in accordance with the laws of India. Any disputes arising under these terms shall be subject to the exclusive jurisdiction of the courts in Hyderabad, Telangana, India.",
   },
   {
     icon: Mail,
     title: "10. Contact Us",
-    body: "If you have any questions about these Terms and Conditions, please contact us at legal@halchal.in or write to us at: Mutiny Talent Pvt. Ltd., Bengaluru, Karnataka, India.",
+    body: "If you have any questions about these Terms and Conditions, please contact us at Support@halchalapp.com or write to us at: Mutiny Talent Pvt. Ltd., Hyderabad, Telangana, India.",
   },
 ];
 

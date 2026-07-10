@@ -32,7 +32,7 @@ const sections = [
   {
     icon: Shield,
     title: "6. Your Rights",
-    body: "You have the right to access, correct, or delete your personal data at any time. You may also request a copy of the data we hold about you or restrict how we process it. To exercise these rights, please contact us at privacy@halchal.in. We will respond within 30 days.",
+    body: "You have the right to access, correct, or delete your personal data at any time. You may also request a copy of the data we hold about you or restrict how we process it. To exercise these rights, please contact us at Support@halchalapp.com. We will respond within 30 days.",
   },
   {
     icon: Share2,
@@ -47,7 +47,7 @@ const sections = [
   {
     icon: Eye,
     title: "9. Contact Us",
-    body: "If you have any questions about this Privacy Policy or our data practices, please contact us at privacy@halchal.in or write to us at: Mutiny Talent Pvt. Ltd., Bengaluru, Karnataka, India.",
+    body: "If you have any questions about this Privacy Policy or our data practices, please contact us at Support@halchalapp.com or write to us at: Mutiny Talent Pvt. Ltd., Hyderabad, Telangana, India.",
   },
 ];
 

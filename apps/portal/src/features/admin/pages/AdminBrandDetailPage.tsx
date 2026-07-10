@@ -112,13 +112,19 @@ function AssignTeamModal({ brandId, onClose }: { brandId: string; onClose: () =>
 
   const assign = useMutation({
     mutationFn: (staffId: string) => adminApi.assignBrand(getToken()!, staffId, brandId),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-team-members"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-team-members"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-brand", brandId] });
+    },
     onError: () => toast("Failed to assign member", "error"),
   });
 
   const remove = useMutation({
     mutationFn: (staffId: string) => adminApi.removeBrand(getToken()!, staffId, brandId),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-team-members"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-team-members"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-brand", brandId] });
+    },
     onError: () => toast("Failed to remove member", "error"),
   });
 
@@ -274,6 +280,25 @@ export function AdminBrandDetailPage() {
               Joined {new Date(brand.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
             </span>
           </div>
+
+          {/* Assigned team members */}
+          {brand.assignedStaff && brand.assignedStaff.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">Assigned to:</span>
+              {brand.assignedStaff.map((s) => (
+                <span
+                  key={s.id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                  title={s.email}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                  {s.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

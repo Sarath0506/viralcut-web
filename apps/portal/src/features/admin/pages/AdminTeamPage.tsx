@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, History, ListChecks, Plus, Search, UserCheck, UserX } from "lucide-react";
+import { Building2, History, ListChecks, Plus, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -371,6 +371,67 @@ function TasksModal({ member, onClose }: { member: StaffMember; onClose: () => v
   );
 }
 
+/* ── Delete Member Dialog ── */
+function DeleteMemberDialog({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [typed, setTyped] = useState("");
+
+  const deleteMutation = useMutation({
+    mutationFn: () => adminApi.deleteTeamMember(getToken()!, member.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-team-members"] });
+      toast("Team member permanently deleted", "success");
+      onClose();
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Failed to delete member", "error"),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-red-500/30 bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="font-bold text-lg text-red-400">Delete Team Member</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface-variant hover:text-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4 p-6">
+          <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            This will <strong>permanently delete</strong> <span className="font-semibold">{member.name}</span> and all their data. This cannot be undone.
+          </div>
+
+          <Field label='Type "delete" to confirm' required>
+            <Input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder="delete"
+              autoComplete="off"
+            />
+          </Field>
+
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={deleteMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              disabled={typed !== "delete" || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete Permanently"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Member Row ── */
 function MemberRow({ member }: { member: StaffMember }) {
   const { getToken } = useAuth();
@@ -380,6 +441,7 @@ function MemberRow({ member }: { member: StaffMember }) {
   const [showActivity, setShowActivity] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   const deactivateMutation = useMutation({
     mutationFn: () => adminApi.deactivateStaff(getToken()!, member.id),
@@ -405,6 +467,7 @@ function MemberRow({ member }: { member: StaffMember }) {
       {showAssign && <AssignBrandModal member={member} onClose={() => setShowAssign(false)} />}
       {showActivity && <StaffActivityModal member={member} onClose={() => setShowActivity(false)} />}
       {showTasks && <TasksModal member={member} onClose={() => setShowTasks(false)} />}
+      {showDelete && <DeleteMemberDialog member={member} onClose={() => setShowDelete(false)} />}
       <ConfirmDialog
         open={confirmDeactivate}
         title="Deactivate this team member?"
@@ -484,15 +547,25 @@ function MemberRow({ member }: { member: StaffMember }) {
                 Deactivate
               </button>
             ) : (
-              <button
-                onClick={() => reactivateMutation.mutate()}
-                disabled={reactivateMutation.isPending}
-                title="Reactivate this member"
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-variant hover:text-foreground disabled:opacity-40"
-              >
-                <UserCheck className="h-3.5 w-3.5" />
-                Reactivate
-              </button>
+              <>
+                <button
+                  onClick={() => reactivateMutation.mutate()}
+                  disabled={reactivateMutation.isPending}
+                  title="Reactivate this member"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-surface-variant hover:text-foreground disabled:opacity-40"
+                >
+                  <UserCheck className="h-3.5 w-3.5" />
+                  Reactivate
+                </button>
+                <button
+                  onClick={() => setShowDelete(true)}
+                  title="Permanently delete this member"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Member
+                </button>
+              </>
             )}
           </div>
         </td>

@@ -17,7 +17,7 @@ const sections = [
   {
     icon: UserMinus,
     title: "1. How to Delete Your Account",
-    body: "You can request account deletion directly from the Halchal app: go to Profile → Settings → Delete Account, and confirm your request. Alternatively, you may email us at support@halchal.in with the subject line 'Account Deletion Request' from your registered email address. We will process your request within 7 business days.",
+    body: "You can request account deletion directly from the Halchal app: go to Profile → scroll down to Danger Zone → Delete Account, and confirm your request. Alternatively, you may email us at Support@halchalapp.com with the subject line 'Account Deletion Request' from your registered email address. We will process your request within 7 business days.",
   },
   {
     icon: Trash2,
@@ -52,7 +52,7 @@ const sections = [
   {
     icon: Mail,
     title: "8. Contact Us",
-    body: "If you have trouble deleting your account or want to understand what data we hold before proceeding, please contact us at support@halchal.in or write to us at: Mutiny Talent Pvt. Ltd., Bengaluru, Karnataka, India. We are committed to honouring your data rights promptly.",
+    body: "If you have trouble deleting your account or want to understand what data we hold before proceeding, please contact us at Support@halchalapp.com or write to us at: Mutiny Talent Pvt. Ltd., Hyderabad, Telangana, India. We are committed to honouring your data rights promptly.",
   },
 ];
 

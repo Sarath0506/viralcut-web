@@ -473,6 +473,7 @@ export type AdminBrandDetail = {
   pocEmail: string | null;
   createdAt: string;
   campaigns: Campaign[];
+  assignedStaff: { id: string; name: string; email: string; accessLevel: string }[];
 };
 
 export type KycStatus = "not_started" | "pending" | "verified";
@@ -941,6 +942,12 @@ export const adminApi = {
   reactivateStaff: (token: string, staffId: string) =>
     apiFetch<{ reactivated: boolean }>(`/admin/team-members/${staffId}/reactivate`, {
       method: "POST",
+      accessToken: token,
+    }),
+
+  deleteTeamMember: (token: string, staffId: string) =>
+    apiFetch<{ deleted: boolean }>(`/admin/team-members/${staffId}`, {
+      method: "DELETE",
       accessToken: token,
     }),
 
