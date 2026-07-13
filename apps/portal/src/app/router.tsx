@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { LandingPage } from "@/features/landing/pages/LandingPage";
 import { DeleteAccountPage } from "@/features/legal/pages/DeleteAccountPage";
 import { PrivacyPolicyPage } from "@/features/legal/pages/PrivacyPolicyPage";
+import { SupportPage } from "@/features/legal/pages/SupportPage";
 import { TermsPage } from "@/features/legal/pages/TermsPage";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
@@ -234,6 +235,10 @@ export const router = createBrowserRouter([
       {
         path: "delete-account",
         element: <DeleteAccountPage />,
+      },
+      {
+        path: "support",
+        element: <SupportPage />,
       },
       {
         element: <GuestRoute />,
