@@ -520,6 +520,11 @@ function Footer() {
                   Delete Account
                 </Link>
               </li>
+              <li>
+                <Link to="/support" className="text-sm text-white/50 transition-colors hover:text-white">
+                  Support
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -535,6 +540,10 @@ function Footer() {
             <span className="text-xs text-white/20">·</span>
             <Link to="/terms" className="text-xs text-white/40 underline underline-offset-2 transition-colors hover:text-white">
               Terms of Service
+            </Link>
+            <span className="text-xs text-white/20">·</span>
+            <Link to="/support" className="text-xs text-white/40 underline underline-offset-2 transition-colors hover:text-white">
+              Support
             </Link>
             <span className="text-xs text-white/20">·</span>
             <p className="text-xs text-white/30">Made with ❤️ in India</p>
