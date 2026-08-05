@@ -858,6 +858,13 @@ export const adminApi = {
   brand: (token: string, id: string) =>
     apiFetch<AdminBrandDetail>(`/admin/brands/${id}`, { accessToken: token }),
 
+  updateBrand: (token: string, id: string, body: { companyName?: string; companyEmail?: string; pocName?: string; pocPhone?: string; pocEmail?: string; logoUrl?: string }) =>
+    apiFetch<AdminBrandDetail>(`/admin/brands/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
   creators: (token: string) =>
     apiFetch<AdminCreatorSummary[]>("/admin/creators", { accessToken: token }),
 

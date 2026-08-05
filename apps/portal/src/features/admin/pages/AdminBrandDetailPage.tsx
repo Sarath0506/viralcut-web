@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { useToast } from "@/components/ui/toaster";
 import { formatPlatformList } from "@/features/campaigns/lib/platform-labels";
-import { adminApi, portalApi, type Campaign } from "@/lib/api";
+import { adminApi, portalApi, type AdminBrandDetail, type Campaign } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
 /* ── helpers ── */
@@ -182,6 +183,128 @@ function AssignTeamModal({ brandId, onClose }: { brandId: string; onClose: () =>
   );
 }
 
+/* ── Edit Brand Modal ── */
+function EditBrandModal({ brand, onClose }: { brand: AdminBrandDetail; onClose: () => void }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [companyName, setCompanyName] = useState(brand.companyName);
+  const [companyEmail, setCompanyEmail] = useState(brand.companyEmail ?? "");
+  const [pocName, setPocName] = useState(brand.pocName ?? "");
+  const [pocPhone, setPocPhone] = useState(brand.pocPhone ?? "");
+  const [pocEmail, setPocEmail] = useState(brand.pocEmail ?? "");
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      let logoUrl: string | undefined;
+      if (pendingLogoFile) {
+        const res = await adminApi.uploadBrandLogo(getToken()!, pendingLogoFile);
+        logoUrl = res.url;
+      }
+      return adminApi.updateBrand(getToken()!, brand.id, {
+        companyName: companyName.trim(),
+        companyEmail: companyEmail.trim() || undefined,
+        pocName,
+        pocPhone,
+        pocEmail,
+        logoUrl,
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-brand", brand.id] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-brands"] });
+      toast("Brand updated");
+      onClose();
+    },
+    onError: () => toast("Failed to update brand", "error"),
+  });
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  const currentLogo = logoPreview ?? brand.logoUrl ?? null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="font-bold text-lg">Edit Brand</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-surface-variant hover:text-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            {currentLogo ? (
+              <img src={currentLogo} alt={brand.companyName} className="h-16 w-16 rounded-xl object-cover ring-2 ring-primary/20" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/15 text-lg font-black text-primary">
+                {initials(brand.companyName)}
+              </div>
+            )}
+            <div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                {pendingLogoFile ? "Image selected ✓" : "Change logo"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted">Company name</label>
+            <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company name" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted">Company email</label>
+            <Input value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} placeholder="Company email" type="email" />
+          </div>
+
+          <div className="border-t border-border/50 pt-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-muted">Point of Contact</p>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Name</label>
+                <Input value={pocName} onChange={(e) => setPocName(e.target.value)} placeholder="POC name" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Phone</label>
+                <Input value={pocPhone} onChange={(e) => setPocPhone(e.target.value)} placeholder="POC phone" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Email</label>
+                <Input value={pocEmail} onChange={(e) => setPocEmail(e.target.value)} placeholder="POC email" type="email" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 border-t border-border px-6 py-4">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1"
+            onClick={() => save.mutate()}
+            disabled={save.isPending || !companyName.trim()}
+          >
+            {save.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main page ── */
 export function AdminBrandDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -190,6 +313,7 @@ export function AdminBrandDetailPage() {
   const { toast } = useToast();
   const [tab, setTab] = useState<"campaigns" | "about">("campaigns");
   const [showAssign, setShowAssign] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: brand, isPending } = useQuery({
     queryKey: ["admin-brand", id],
@@ -225,6 +349,7 @@ export function AdminBrandDetailPage() {
   return (
     <div className="space-y-6">
       {showAssign && <AssignTeamModal brandId={brandId} onClose={() => setShowAssign(false)} />}
+      {showEdit && <EditBrandModal brand={brand} onClose={() => setShowEdit(false)} />}
 
       <BackButton to="/admin/brands" label="All Brands" />
 
@@ -261,6 +386,12 @@ export function AdminBrandDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                 </svg>
                 Assign Team
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowEdit(true)}>
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                Edit
               </Button>
             </div>
           </div>
