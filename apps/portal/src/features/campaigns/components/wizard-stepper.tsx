@@ -5,10 +5,15 @@ import { useCampaignWizard } from "@/providers/campaign-wizard";
 import { WIZARD_SHELL_WIDTH } from "@/features/campaigns/components/campaign-wizard-layout";
 import { cn } from "@/lib/utils";
 
+const STEP_ORDER = ["basics", "brief", "payout", "review"] as const;
+
 export function WizardStepper() {
   const { pathname } = useLocation();
   const { paths, draft } = useCampaignWizard();
-  const canJump = Boolean(draft.campaignId);
+  // Only steps up to the furthest one this campaign has genuinely reached
+  // are jumpable — prevents skipping straight to Review (which would show
+  // a false "ready to publish") without ever visiting Brief or Budget.
+  const furthestIndex = STEP_ORDER.indexOf(draft.wizardStep);
 
   const steps = [
     { path: paths.basics, label: "Details" },
@@ -33,7 +38,7 @@ export function WizardStepper() {
           {steps.map((step, i) => {
             const completed = i < currentIndex;
             const active = i === currentIndex;
-            const reachable = canJump && !active;
+            const reachable = i <= furthestIndex && !active;
 
             const circle = (
               <span

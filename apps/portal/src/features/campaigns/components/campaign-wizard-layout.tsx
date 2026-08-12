@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { ButtonProps } from "@/components/ui/button";
 
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,10 @@ export function WizardPage({ children }: { children: ReactNode }) {
 export function CampaignWizardHeader({
   title,
   subtitle,
-  saving,
   onBack,
 }: {
   title: string;
   subtitle: string;
-  /** When provided, shows a subtle autosave status pill next to the title. */
-  saving?: boolean;
   /** When provided, renders a square icon back-button before the title. */
   onBack?: () => void;
 }) {
@@ -51,26 +48,6 @@ export function CampaignWizardHeader({
           <p className="mt-0.5 text-sm text-muted">{subtitle}</p>
         </div>
       </div>
-      {saving !== undefined && (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
-            saving ? "bg-surface-variant text-muted" : "bg-primary/10 text-primary",
-          )}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Saving…
-            </>
-          ) : (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              Saved
-            </>
-          )}
-        </span>
-      )}
     </div>
   );
 }

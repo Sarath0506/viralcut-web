@@ -20,25 +20,10 @@ export function useCampaignDraftSave() {
   const { getToken } = useAuth();
   const role = usePortalRole();
   const isAdmin = role === "admin";
-  const { draft, reset, saveNow } = useCampaignWizard();
+  const { draft, reset } = useCampaignWizard();
   const [saving, setSaving] = useState(false);
 
   const campaignsBase = isAdmin ? "/admin/campaigns" : "/campaigns";
-
-  const saveDraft = useCallback(async (): Promise<boolean> => {
-    const title = draft.title.trim();
-    if (!title) {
-      throw new Error("Enter a campaign name to save a draft.");
-    }
-
-    setSaving(true);
-    try {
-      await saveNow("review");
-      return true;
-    } finally {
-      setSaving(false);
-    }
-  }, [draft.title, saveNow]);
 
   const publish = useCallback(async (): Promise<{ id: string }> => {
     if (hasInvalidReferenceAssets(draft.referenceAssets)) {
@@ -73,26 +58,6 @@ export function useCampaignDraftSave() {
     }
   }, [draft, getToken, isAdmin]);
 
-  const saveDraftWithFeedback = useCallback(
-    async (toast: (message: string, type?: "success" | "error") => void) => {
-      try {
-        await saveDraft();
-        const campaignId = draft.campaignId;
-        toast(
-          draft.status === "draft" ? "Campaign saved as draft." : "Changes saved.",
-          "success",
-        );
-        reset();
-        navigate(
-          campaignId ? `${campaignsBase}/${campaignId}` : campaignsBase,
-        );
-      } catch (error) {
-        toast(apiErrorMessage(error, "Could not save draft."), "error");
-      }
-    },
-    [campaignsBase, draft.campaignId, draft.status, navigate, reset, saveDraft],
-  );
-
   const publishWithFeedback = useCallback(
     async (
       toast: (message: string, type?: "success" | "error") => void,
@@ -112,9 +77,7 @@ export function useCampaignDraftSave() {
   );
 
   return {
-    saveDraft,
     publish,
-    saveDraftWithFeedback,
     publishWithFeedback,
     saving,
   };

@@ -42,6 +42,8 @@ export function campaignToDraft(campaign: Campaign): CampaignDraft {
     campaignId: campaign.id,
     status: campaign.status as CampaignDraft["status"],
     ownership: campaign.ownership,
+    wizardStep: campaign.wizardStep,
+    brandProfileId: campaign.brandProfileId,
     inviteAcceptedAt: campaign.inviteAcceptedAt,
     title: campaign.title,
     category: campaign.category ?? "",
