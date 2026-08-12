@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
-  Bookmark,
   Check,
   FileVideo,
   Lightbulb,
@@ -26,7 +25,6 @@ import { parseRulePoints } from "@/features/campaigns/lib/rule-points";
 import { normalizeUploadUrl } from "@/lib/media-url";
 import { ApiError, brandApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 import { useAuth } from "@/providers/auth-provider";
@@ -45,10 +43,9 @@ function CardHeader({ icon: Icon, title }: { icon: typeof Lightbulb; title: stri
 export function CampaignBriefPage() {
   const navigate = useNavigate();
   const { goBack, backLabel } = useWizardBack();
-  const { draft, paths, update, saveNow, saving: autoSaving } = useCampaignWizard();
+  const { draft, paths, update, saveNow } = useCampaignWizard();
   const { getToken } = useAuth();
   const { toast } = useToast();
-  const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
   const uploadReferenceAsset = async (
     file: File,
     expectedType: "image" | "video",
@@ -95,7 +92,6 @@ export function CampaignBriefPage() {
           <CampaignWizardHeader
             title="Campaign Brief & Rules"
             subtitle="Define the creative direction and campaign guardrails."
-            saving={autoSaving}
             onBack={goBack}
           />
 
@@ -228,13 +224,6 @@ export function CampaignBriefPage() {
               buttonProps: { size: "sm", variant: "outline" },
             }}
             rightActions={[
-              {
-                id: "save-draft",
-                label: saving ? "Saving..." : "Save as Draft",
-                onClick: () => void saveDraftWithFeedback(toast),
-                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
-                buttonProps: { size: "sm", variant: "outline", disabled: saving },
-              },
               {
                 id: "next",
                 label: "Next: Budget",

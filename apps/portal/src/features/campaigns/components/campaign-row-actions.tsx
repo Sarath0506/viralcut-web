@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { isCampaignReadyToPublish } from "@/features/campaigns/lib/campaign-payload";
 import { getWizardEditPath } from "@/features/campaigns/lib/wizard-paths";
 import { cn } from "@/lib/utils";
 import type { Campaign } from "@/lib/api";
@@ -23,6 +24,8 @@ export type CampaignMenuAction =
       description: string;
       confirmLabel: string;
       variant?: "default" | "destructive";
+      disabled?: boolean;
+      disabledReason?: string;
     }
   | {
       kind: "delete";
@@ -42,7 +45,8 @@ export function getCampaignMenuActions(campaign: Campaign): CampaignMenuAction[]
     (campaign.submissionCount ?? 0) === 0;
 
   switch (campaign.status) {
-    case "draft":
+    case "draft": {
+      const ready = isCampaignReadyToPublish(campaign);
       return [
         {
           kind: "status",
@@ -51,6 +55,10 @@ export function getCampaignMenuActions(campaign: Campaign): CampaignMenuAction[]
           title: "Set live",
           description: "Publish this campaign so creators can discover and submit content.",
           confirmLabel: "Set live",
+          disabled: !ready,
+          disabledReason: ready
+            ? undefined
+            : "Finish setting up this campaign (brief, sample content, budget) before publishing.",
         },
         {
           kind: "status",
@@ -75,6 +83,7 @@ export function getCampaignMenuActions(campaign: Campaign): CampaignMenuAction[]
             ]
           : []),
       ];
+    }
     case "live":
       return [
         {
@@ -246,11 +255,17 @@ export function CampaignRowActions({
           key={action.kind === "delete" ? "delete" : action.status}
           type="button"
           role="menuitem"
+          disabled={action.kind === "status" && action.disabled}
+          title={action.kind === "status" ? action.disabledReason : undefined}
           className={cn(
             "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-variant",
             action.variant === "destructive" && "text-destructive",
+            action.kind === "status" &&
+              action.disabled &&
+              "cursor-not-allowed text-muted opacity-50 hover:bg-transparent",
           )}
           onClick={() => {
+            if (action.kind === "status" && action.disabled) return;
             setOpen(false);
             onMenuAction(campaign, action);
           }}

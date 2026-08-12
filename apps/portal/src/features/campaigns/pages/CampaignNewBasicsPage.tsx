@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Bookmark,
+  Building2,
   Check,
   ChevronDown,
   Globe2,
@@ -22,12 +23,11 @@ import {
 } from "@/features/campaigns/components/campaign-wizard-layout";
 import { StateMultiSelect } from "@/features/campaigns/components/state-multi-select";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
-import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { PLATFORM_OPTIONS } from "@/features/campaigns/lib/platform-options";
 import { normalizeUploadUrl, resolveMediaUrl } from "@/lib/media-url";
-import { ApiError, brandApi } from "@/lib/api";
-import { useAuth } from "@/providers/auth-provider";
+import { adminApi, ApiError, brandApi } from "@/lib/api";
+import { useAuth, usePortalRole } from "@/providers/auth-provider";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 
 const CATEGORY_OPTIONS = [
@@ -57,14 +57,40 @@ function ValidCheck() {
 
 export function CampaignNewBasicsPage() {
   const navigate = useNavigate();
-  const { draft, paths, update, saveNow, saving: autoSaving } = useCampaignWizard();
+  const { draft, paths, update, saveNow, loading } = useCampaignWizard();
   const { goBack, backLabel } = useWizardBack();
   const { getToken } = useAuth();
   const { toast } = useToast();
-  const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const selectedPlatform = draft.platforms[0];
+
+  // "Other" is a picker trigger, not a real stored value — once chosen (or
+  // once an existing campaign loads with a category outside the preset
+  // list), show a text field so the actual custom category can be typed.
+  const [customCategoryOpen, setCustomCategoryOpen] = useState(false);
+  useEffect(() => {
+    if (!loading && draft.category && !CATEGORY_OPTIONS.includes(draft.category)) {
+      setCustomCategoryOpen(true);
+    }
+  }, [loading, draft.category]);
+
+  const role = usePortalRole();
+  const isAdmin = role === "admin";
+  // Campaigns created from a brand's page already have a brandProfileId — only
+  // an admin creating from the global Campaigns list needs to pick one here.
+  // Captured once (after the draft has settled) rather than recomputed live,
+  // so the picker doesn't vanish out from under you the moment you use it.
+  const startedWithoutBrandRef = useRef<boolean | null>(null);
+  if (!loading && startedWithoutBrandRef.current === null) {
+    startedWithoutBrandRef.current = !draft.brandProfileId;
+  }
+  const needsBrandAssignment = isAdmin && (startedWithoutBrandRef.current ?? false);
+  const { data: brands = [], isPending: brandsLoading } = useQuery({
+    queryKey: ["admin-brands-picker"],
+    queryFn: () => adminApi.brands(getToken()!),
+    enabled: needsBrandAssignment && Boolean(getToken()),
+  });
 
   const onCoverSelected = async (file: File | undefined) => {
     if (!file) return;
@@ -108,7 +134,6 @@ export function CampaignNewBasicsPage() {
           <CampaignWizardHeader
             title={draft.campaignId ? "Edit Campaign" : "Create New Campaign"}
             subtitle="Set up your performance-driven creator campaign."
-            saving={draft.campaignId ? autoSaving : undefined}
             onBack={goBack}
           />
 
@@ -182,6 +207,47 @@ export function CampaignNewBasicsPage() {
 
             {/* ── Right: form fields ── */}
             <div className="space-y-6">
+              {needsBrandAssignment ? (
+                <div className="space-y-2">
+                  <label htmlFor="brand" className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Brand
+                  </label>
+                  <p className="-mt-1.5 text-xs text-muted">
+                    This campaign isn't tied to a brand yet — assign one to publish it.
+                  </p>
+                  <div className="relative">
+                    <select
+                      id="brand"
+                      value={draft.brandProfileId ?? ""}
+                      disabled={brandsLoading}
+                      onChange={(e) =>
+                        update({ brandProfileId: e.target.value || null })
+                      }
+                      className={cn(
+                        "h-11 w-full appearance-none rounded-xl border border-border bg-surface px-4 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                        draft.brandProfileId ? "pr-16" : "pr-9",
+                      )}
+                    >
+                      <option value="">
+                        {brandsLoading ? "Loading brands..." : "Select a brand"}
+                      </option>
+                      {brands.map((brand) => (
+                        <option key={brand.id} value={brand.id}>
+                          {brand.companyName}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                    {draft.brandProfileId && (
+                      <span className="absolute right-9 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-money/15 text-money">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <label htmlFor="title" className="text-sm font-medium text-foreground">
                   Campaign name
@@ -205,17 +271,23 @@ export function CampaignNewBasicsPage() {
                 <div className="relative">
                   <select
                     id="category"
-                    value={draft.category}
-                    onChange={(e) => update({ category: e.target.value })}
+                    value={customCategoryOpen ? "Other" : draft.category}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "Other") {
+                        setCustomCategoryOpen(true);
+                        update({ category: "" });
+                      } else {
+                        setCustomCategoryOpen(false);
+                        update({ category: value });
+                      }
+                    }}
                     className={cn(
                       "h-11 w-full appearance-none rounded-xl border border-border bg-surface px-4 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       draft.category ? "pr-16" : "pr-9",
                     )}
                   >
                     <option value="">Select a category</option>
-                    {draft.category && !CATEGORY_OPTIONS.includes(draft.category) && (
-                      <option value={draft.category}>{draft.category}</option>
-                    )}
                     {CATEGORY_OPTIONS.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -229,6 +301,14 @@ export function CampaignNewBasicsPage() {
                     </span>
                   )}
                 </div>
+                {customCategoryOpen && (
+                  <Input
+                    value={draft.category}
+                    onChange={(e) => update({ category: e.target.value })}
+                    placeholder="Enter your category"
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -332,13 +412,6 @@ export function CampaignNewBasicsPage() {
             }}
             rightActions={[
               {
-                id: "save-draft",
-                label: saving ? "Saving..." : "Save as Draft",
-                onClick: () => void saveDraftWithFeedback(toast),
-                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
-                buttonProps: { size: "sm", variant: "outline", disabled: saving },
-              },
-              {
                 id: "next",
                 label: "Next: Brief & Rules",
                 onClick: () => {
@@ -353,7 +426,8 @@ export function CampaignNewBasicsPage() {
                     !draft.coverImageUrl ||
                     !draft.startDate ||
                     !hasPlatform ||
-                    !hasValidLocation,
+                    !hasValidLocation ||
+                    (needsBrandAssignment && !draft.brandProfileId),
                 },
               },
             ]}

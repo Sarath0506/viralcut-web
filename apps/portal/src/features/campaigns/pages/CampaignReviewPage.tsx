@@ -1,13 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
-  Bookmark,
   Check,
   Eye,
+  HardDrive,
   MapPin,
+  PlayCircle,
   Rocket,
   UserPlus,
+  Youtube,
 } from "lucide-react";
 
 import { useToast } from "@/components/ui/toaster";
@@ -16,10 +18,14 @@ import {
   CampaignWizardHeader,
   WizardPage,
 } from "@/features/campaigns/components/campaign-wizard-layout";
+import {
+  MediaPreviewLightbox,
+} from "@/features/campaigns/components/reference-assets-editor";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { hasInvalidReferenceAssets } from "@/features/campaigns/lib/campaign-payload";
+import type { ReferenceAsset } from "@/features/campaigns/lib/reference-assets";
 import {
   estimateViewsFromBudget,
   formatEstimatedViews,
@@ -70,10 +76,10 @@ export function CampaignReviewPage() {
   const { goBack, backLabel } = useWizardBack();
   const role = usePortalRole();
   const isAdmin = role === "admin";
-  const { draft, paths, saving: autoSaving } = useCampaignWizard();
+  const { draft, paths } = useCampaignWizard();
   const { toast } = useToast();
-  const { saveDraftWithFeedback, publishWithFeedback, saving } =
-    useCampaignDraftSave();
+  const { publishWithFeedback, saving } = useCampaignDraftSave();
+  const [previewAsset, setPreviewAsset] = useState<ReferenceAsset | null>(null);
 
   const invalidAssets = hasInvalidReferenceAssets(draft.referenceAssets);
   const doPoints = useMemo(() => parseRulePoints(draft.doRules), [draft.doRules]);
@@ -124,7 +130,6 @@ export function CampaignReviewPage() {
           <CampaignWizardHeader
             title="Review your Campaign"
             subtitle="Check all campaign details before publishing to creators."
-            saving={autoSaving}
             onBack={goBack}
           />
 
@@ -281,13 +286,24 @@ export function CampaignReviewPage() {
               {draft.sourceAssets.length > 0 && (
                 <div className="mt-4 border-t border-border pt-3">
                   <p className="mb-1.5 text-xs font-semibold text-muted">Source assets</p>
-                  <ul className="space-y-1 text-sm text-muted">
-                    {draft.sourceAssets.map((asset) => (
-                      <li key={asset.id}>
-                        <span className="font-medium capitalize text-foreground">{asset.type}</span>
-                        {asset.label ? ` — ${asset.label}` : ""}: {asset.url}
-                      </li>
-                    ))}
+                  <ul className="space-y-1.5 text-sm">
+                    {draft.sourceAssets.map((asset) => {
+                      const Icon = asset.type === "youtube" ? Youtube : HardDrive;
+                      return (
+                        <li key={asset.id}>
+                          <a
+                            href={asset.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                          >
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            {asset.label?.trim() ||
+                              (asset.type === "youtube" ? "YouTube reference" : "Drive reference")}
+                          </a>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -295,13 +311,41 @@ export function CampaignReviewPage() {
               {draft.referenceAssets.length > 0 && (
                 <div className="mt-4 border-t border-border pt-3">
                   <p className="mb-1.5 text-xs font-semibold text-muted">Sample content</p>
-                  <ul className="space-y-1 text-sm text-muted">
+                  <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
                     {draft.referenceAssets.map((asset) => (
                       <li key={asset.id}>
-                        <span className="font-medium capitalize text-foreground">
-                          {asset.type === "image" ? "Image (Post)" : "Video (Reel)"}
-                        </span>
-                        {asset.label ? ` — ${asset.label}` : ""}: {asset.url}
+                        <button
+                          type="button"
+                          disabled={!asset.url}
+                          onClick={() => setPreviewAsset(asset)}
+                          className="relative block aspect-square w-full overflow-hidden rounded-lg border border-border bg-surface-variant/40 disabled:cursor-not-allowed"
+                        >
+                          {asset.url ? (
+                            asset.type === "image" ? (
+                              <img
+                                src={resolveMediaUrl(asset.url)}
+                                alt={asset.label || "Sample preview"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <>
+                                <video
+                                  src={resolveMediaUrl(asset.url)}
+                                  muted
+                                  preload="metadata"
+                                  className="h-full w-full object-cover"
+                                />
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10">
+                                  <PlayCircle className="h-6 w-6 text-white drop-shadow" />
+                                </div>
+                              </>
+                            )
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
+                              No file
+                            </div>
+                          )}
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -314,7 +358,14 @@ export function CampaignReviewPage() {
               )}
             </ReviewCard>
 
-            {isAdmin && draft.campaignId && (
+            {previewAsset && (
+              <MediaPreviewLightbox
+                asset={previewAsset}
+                onClose={() => setPreviewAsset(null)}
+              />
+            )}
+
+            {isAdmin && draft.campaignId && !draft.brandProfileId && (
               <div className="rounded-2xl border border-border bg-surface p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -345,17 +396,6 @@ export function CampaignReviewPage() {
               buttonProps: { size: "sm", variant: "outline" },
             }}
             rightActions={[
-              {
-                id: "save-draft",
-                label: saving
-                  ? "Saving..."
-                  : draft.status === "draft"
-                    ? "Save as Draft"
-                    : "Save changes",
-                onClick: () => void saveDraftWithFeedback(toast),
-                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
-                buttonProps: { size: "sm", variant: "outline", disabled: saving },
-              },
               {
                 id: "publish",
                 label: saving ? "Publishing..." : "Publish Campaign",

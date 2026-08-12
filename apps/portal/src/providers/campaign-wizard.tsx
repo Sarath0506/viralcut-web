@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { campaignToDraft } from "@/features/campaigns/lib/campaign-from-api";
 import { buildCampaignBody } from "@/features/campaigns/lib/campaign-payload";
@@ -25,6 +25,10 @@ export type CampaignDraft = {
   campaignId: string | null;
   status: "draft" | "live" | "paused" | "closed";
   ownership?: "brand_created" | "admin_created";
+  /** Furthest step this campaign has genuinely reached — server-enforced,
+   * never regresses. Drives which steps the stepper allows jumping to. */
+  wizardStep: "basics" | "brief" | "payout" | "review";
+  brandProfileId: string | null;
   inviteAcceptedAt?: string | null;
   coverImageUrl: string;
   title: string;
@@ -48,6 +52,8 @@ export type CampaignDraft = {
 const empty: CampaignDraft = {
   campaignId: null,
   status: "draft",
+  wizardStep: "basics",
+  brandProfileId: null,
   coverImageUrl: "",
   title: "",
   category: "",
@@ -87,7 +93,6 @@ export function CampaignWizardProvider({
   editCampaignId?: string;
   children: React.ReactNode;
 }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const { getToken } = useAuth();
   const role = usePortalRole();
@@ -152,7 +157,7 @@ export function CampaignWizardProvider({
     return () => {
       cancelled = true;
     };
-  }, [editCampaignId, getToken, navigate, isAdmin]);
+  }, [editCampaignId, getToken, isAdmin]);
 
   useEffect(() => {
     const campaignId = editCampaignId ?? draft.campaignId;
@@ -181,7 +186,10 @@ export function CampaignWizardProvider({
         };
 
         if (current.campaignId) {
-          await portalApi.campaigns.update(token, current.campaignId, body);
+          const updated = await portalApi.campaigns.update(token, current.campaignId, body);
+          // Server enforces monotonic progress (never regresses), so always
+          // trust its response over what we optimistically sent.
+          setDraft((d) => ({ ...d, wizardStep: updated.wizardStep }));
           return current.campaignId;
         }
 
@@ -191,21 +199,31 @@ export function CampaignWizardProvider({
           campaignId: created.id,
           ownership: created.ownership,
           inviteAcceptedAt: created.inviteAcceptedAt,
+          wizardStep: created.wizardStep,
         }));
-        const editBase = isAdmin
-          ? `/admin/campaigns/${created.id}/edit`
-          : `/campaigns/${created.id}/edit`;
+        // Update the address bar in place (no React Router navigation) so a
+        // background auto-save never remounts the page mid-typing — refresh
+        // or bookmark still lands on the right campaign, but nothing here
+        // interrupts what the user is doing right now.
         if (!editCampaignId) {
-          navigate(`${editBase}${location.pathname.includes("/brief") ? "/brief" : location.pathname.includes("/payout") ? "/payout" : location.pathname.includes("/review") ? "/review" : ""}`, {
-            replace: true,
-          });
+          const editBase = isAdmin
+            ? `/admin/campaigns/${created.id}/edit`
+            : `/campaigns/${created.id}/edit`;
+          const suffix = location.pathname.includes("/brief")
+            ? "/brief"
+            : location.pathname.includes("/payout")
+              ? "/payout"
+              : location.pathname.includes("/review")
+                ? "/review"
+                : "";
+          window.history.replaceState(null, "", `${editBase}${suffix}`);
         }
         return created.id;
       } finally {
         setSaving(false);
       }
     },
-    [getToken, currentStep, editCampaignId, isAdmin, location.pathname, navigate],
+    [getToken, currentStep, editCampaignId, isAdmin, location.pathname],
   );
 
   const scheduleSave = useCallback(
@@ -225,11 +243,12 @@ export function CampaignWizardProvider({
         draftRef.current = next;
         return next;
       });
-      if (editCampaignId || draftRef.current.campaignId) {
-        scheduleSave();
-      }
+      // Debounced auto-save from the very first edit — persistDraft() itself
+      // won't create a row until there's a non-empty title, so this can't
+      // spam empty drafts from idle clicking.
+      scheduleSave();
     },
-    [editCampaignId, scheduleSave],
+    [scheduleSave],
   );
 
   const saveNow = useCallback(

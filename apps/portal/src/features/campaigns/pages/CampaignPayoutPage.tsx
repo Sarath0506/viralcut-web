@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, ArrowRight, Bookmark, Eye, TrendingUp } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, TrendingUp } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import {
   CampaignWizardFooter,
@@ -15,7 +14,6 @@ import {
   estimateViewsFromBudget,
   formatEstimatedViews,
 } from "@/features/campaigns/lib/estimate-views";
-import { useCampaignDraftSave } from "@/features/campaigns/hooks/use-campaign-draft-save";
 import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 
@@ -47,9 +45,7 @@ function SummaryLine({ label, value, bold }: { label: string; value: string; bol
 export function CampaignPayoutPage() {
   const navigate = useNavigate();
   const { goBack, backLabel } = useWizardBack();
-  const { draft, paths, update, saveNow, saving: autoSaving } = useCampaignWizard();
-  const { toast } = useToast();
-  const { saveDraftWithFeedback, saving } = useCampaignDraftSave();
+  const { draft, paths, update, saveNow } = useCampaignWizard();
 
   const rate = Number(draft.ratePer1kRupees);
   const maxPayout = Number(draft.maxPayoutRupees);
@@ -72,7 +68,6 @@ export function CampaignPayoutPage() {
           <CampaignWizardHeader
             title="Budget & Payouts"
             subtitle="Set your CPV model, campaign budget pool, and projected reach."
-            saving={autoSaving}
             onBack={goBack}
           />
 
@@ -175,13 +170,6 @@ export function CampaignPayoutPage() {
               buttonProps: { size: "sm", variant: "outline" },
             }}
             rightActions={[
-              {
-                id: "save-draft",
-                label: saving ? "Saving..." : "Save as Draft",
-                onClick: () => void saveDraftWithFeedback(toast),
-                icon: !saving ? <Bookmark className="h-4 w-4" /> : undefined,
-                buttonProps: { size: "sm", variant: "outline", disabled: saving },
-              },
               {
                 id: "next",
                 label: "Next: Review",

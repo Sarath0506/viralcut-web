@@ -1,5 +1,10 @@
-import { toApiReferenceAssets, type ReferenceAsset } from "@/features/campaigns/lib/reference-assets";
+import {
+  parseReferenceAssetsFromApi,
+  toApiReferenceAssets,
+  type ReferenceAsset,
+} from "@/features/campaigns/lib/reference-assets";
 import { toApiSourceAssets } from "@/features/campaigns/lib/source-assets";
+import type { Campaign } from "@/lib/api";
 import type { CampaignDraft } from "@/providers/campaign-wizard";
 
 export type CampaignWizardDraft = CampaignDraft & {
@@ -24,6 +29,34 @@ export function hasInvalidReferenceAssets(assets: ReferenceAsset[]): boolean {
   );
 }
 
+/**
+ * Same completeness rules as the Review step's checklist, evaluated directly
+ * against a list-view Campaign (no wizard draft needed) — used to lock
+ * "Set live" for drafts that haven't been fully filled out yet.
+ */
+export function isCampaignReadyToPublish(campaign: Campaign): boolean {
+  const hasTitle = campaign.title.trim().length > 0;
+  const hasPlatform = campaign.platforms.length > 0;
+  const hasValidLocation =
+    campaign.locationType === "pan_india" || campaign.targetStates.length > 0;
+  const hasBriefHook = (campaign.briefHook ?? "").trim().length > 0;
+  const referenceAssets = parseReferenceAssetsFromApi(campaign.referenceAssets);
+  const hasValidAssets = !hasInvalidReferenceAssets(referenceAssets);
+  const budgetValid =
+    campaign.ratePer1kPaise > 0 &&
+    campaign.maxPayoutPaise >= 100_000 &&
+    campaign.budgetPaise >= campaign.maxPayoutPaise;
+
+  return (
+    hasTitle &&
+    hasPlatform &&
+    hasValidLocation &&
+    hasBriefHook &&
+    hasValidAssets &&
+    budgetValid
+  );
+}
+
 export function buildCampaignBody(
   draft: CampaignDraft,
   status: "draft" | "live" | "paused" | "closed",
@@ -34,8 +67,10 @@ export function buildCampaignBody(
   const brief = composeCampaignBrief(draft);
   const platforms = draft.platforms.length > 0 ? draft.platforms.slice(0, 1) : ["instagram_reel"];
 
+  const effectiveBrandProfileId = brandProfileId ?? draft.brandProfileId;
+
   return {
-    ...(brandProfileId ? { brandProfileId } : {}),
+    ...(effectiveBrandProfileId ? { brandProfileId: effectiveBrandProfileId } : {}),
     title: draft.title.trim(),
     status,
     category: draft.category || undefined,
