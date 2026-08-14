@@ -32,14 +32,16 @@ export function AdminSupportTicketDetailPage() {
     enabled: Boolean(getToken() && id),
   });
 
-  const resolve = useMutation({
-    mutationFn: () => adminApi.resolveSupportTicket(getToken()!, id!, resolutionNote.trim()),
-    onSuccess: () => {
+  const respond = useMutation({
+    mutationFn: (action: "investigating" | "resolved") =>
+      adminApi.respondToSupportTicket(getToken()!, id!, action, resolutionNote.trim()),
+    onSuccess: (_, action) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-support-ticket", id] });
       void queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
-      toast("Ticket resolved");
+      setResolutionNote("");
+      toast(action === "resolved" ? "Ticket resolved" : "Update saved");
     },
-    onError: () => toast("Failed to resolve ticket", "error"),
+    onError: () => toast("Failed to update ticket", "error"),
   });
 
   if (isPending) return <DetailPageSkeleton />;
@@ -73,10 +75,12 @@ export function AdminSupportTicketDetailPage() {
             </div>
           </div>
 
-          {ticket.status === "resolved" && ticket.resolutionNote && (
+          {ticket.resolutionNote && (
             <div className="overflow-hidden rounded-2xl border border-border bg-surface">
               <div className="border-b border-border px-5 py-3.5">
-                <p className="text-sm font-semibold text-foreground">Resolution</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {ticket.status === "resolved" ? "Resolution" : "Latest update"}
+                </p>
               </div>
               <div className="px-5 py-4">
                 <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{ticket.resolutionNote}</p>
@@ -89,21 +93,31 @@ export function AdminSupportTicketDetailPage() {
 
           {isPendingTicket && (
             <div className="rounded-2xl border border-border bg-surface-variant/50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Resolve this ticket</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Respond to this ticket</p>
               <textarea
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
                 rows={4}
-                placeholder="What did you tell the clipper? (required)"
+                placeholder="What do you want to tell the clipper? (required)"
                 className="mt-3 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <Button
-                className="mt-3 w-full"
-                disabled={resolve.isPending || resolutionNote.trim().length < 3}
-                onClick={() => resolve.mutate()}
-              >
-                {resolve.isPending ? "Resolving…" : "Mark Resolved"}
-              </Button>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={respond.isPending || resolutionNote.trim().length < 3}
+                  onClick={() => respond.mutate("investigating")}
+                >
+                  {respond.isPending && respond.variables === "investigating" ? "Saving…" : "Still Investigating"}
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={respond.isPending || resolutionNote.trim().length < 3}
+                  onClick={() => respond.mutate("resolved")}
+                >
+                  {respond.isPending && respond.variables === "resolved" ? "Resolving…" : "Mark Resolved"}
+                </Button>
+              </div>
             </div>
           )}
         </div>

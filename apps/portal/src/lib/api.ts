@@ -919,10 +919,15 @@ export const adminApi = {
   supportTicket: (token: string, id: string) =>
     apiFetch<AdminSupportTicketDetail>(`/admin/support-tickets/${id}`, { accessToken: token }),
 
-  resolveSupportTicket: (token: string, id: string, resolutionNote: string) =>
-    apiFetch<AdminSupportTicket>(`/admin/support-tickets/${id}/resolve`, {
+  respondToSupportTicket: (
+    token: string,
+    id: string,
+    action: "investigating" | "resolved",
+    note: string,
+  ) =>
+    apiFetch<AdminSupportTicket>(`/admin/support-tickets/${id}/respond`, {
       method: "POST",
-      body: JSON.stringify({ resolutionNote }),
+      body: JSON.stringify({ action, note }),
       accessToken: token,
     }),
 
