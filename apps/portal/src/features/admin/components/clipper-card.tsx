@@ -8,12 +8,14 @@ import type { AdminCreatorSummary, KycStatus } from "@/lib/api";
 const KYC_STYLE: Record<KycStatus, string> = {
   verified: "bg-emerald-500/15 text-emerald-400",
   pending: "bg-warning/15 text-warning",
+  rejected: "bg-destructive/15 text-destructive",
   not_started: "bg-surface-variant text-muted",
 };
 
 const KYC_LABEL: Record<KycStatus, string> = {
   verified: "KYC Verified",
   pending: "KYC Pending",
+  rejected: "KYC Rejected",
   not_started: "No KYC",
 };
 

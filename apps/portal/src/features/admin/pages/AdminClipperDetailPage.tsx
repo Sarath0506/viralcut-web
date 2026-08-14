@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   Clock,
   ExternalLink,
+  FileText,
   Globe,
   ImageIcon,
   Instagram,
@@ -19,10 +20,12 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { BackButton } from "@/components/ui/back-button";
+import { Button } from "@/components/ui/button";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { StatusPill } from "@/components/ui/status-pill";
+import { useToast } from "@/components/ui/toaster";
 import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
-import { adminApi, type AdminCreatorCampaignEntry, type KycStatus } from "@/lib/api";
+import { adminApi, type AdminCreatorCampaignEntry, type AdminCreatorDetail, type KycStatus } from "@/lib/api";
 import { formatInr, formatViews } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
@@ -48,12 +51,14 @@ function platformIcon(platform: string): LucideIcon {
 const KYC_STYLE: Record<KycStatus, string> = {
   verified: "bg-emerald-500/15 text-emerald-400",
   pending: "bg-warning/15 text-warning",
+  rejected: "bg-destructive/15 text-destructive",
   not_started: "bg-surface-variant text-muted",
 };
 
 const KYC_LABEL: Record<KycStatus, string> = {
   verified: "KYC Verified",
   pending: "KYC Pending",
+  rejected: "KYC Rejected",
   not_started: "No KYC",
 };
 
@@ -105,6 +110,108 @@ function CampaignCardGrid({ entries, emptyMessage }: { entries: AdminCreatorCamp
       {entries.map((entry) => (
         <CampaignCard key={entry.campaignId} entry={entry} />
       ))}
+    </div>
+  );
+}
+
+/* ── KYC review ── */
+function KycReviewCard({ creator }: { creator: AdminCreatorDetail }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const review = useMutation({
+    mutationFn: (body: { action: "approve" | "reject"; reason?: string }) =>
+      adminApi.reviewKyc(getToken()!, creator.id, body.action, body.reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-creator", creator.id] });
+      setShowRejectForm(false);
+      setRejectReason("");
+      toast(review.variables?.action === "reject" ? "KYC rejected" : "KYC approved");
+    },
+    onError: () => toast("Failed to update KYC", "error"),
+  });
+
+  if (creator.kycStatus === "not_started") return null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+        <p className="text-sm font-semibold text-foreground">KYC Verification</p>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${KYC_STYLE[creator.kycStatus]}`}>
+          {KYC_LABEL[creator.kycStatus]}
+        </span>
+      </div>
+
+      <div className="space-y-4 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+          {creator.kycDocumentType && (
+            <span>
+              Document: <span className="font-medium capitalize text-foreground">{creator.kycDocumentType}</span>
+            </span>
+          )}
+          {creator.kycSubmittedAt && <span>Submitted {formatDate(creator.kycSubmittedAt)}</span>}
+        </div>
+
+        {creator.kycDocumentUrl ? (
+          <a
+            href={resolveMediaUrl(creator.kycDocumentUrl)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            <FileText className="h-4 w-4" />
+            View submitted document
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        ) : (
+          <p className="text-sm text-muted/60 italic">No document on file</p>
+        )}
+
+        {creator.kycStatus === "rejected" && creator.kycRejectionReason && (
+          <div className="rounded-xl bg-surface-variant/50 p-4">
+            <p className="text-sm font-semibold">Rejection reason</p>
+            <p className="mt-1.5 text-sm text-muted">{creator.kycRejectionReason}</p>
+          </div>
+        )}
+
+        {creator.kycStatus === "pending" &&
+          (showRejectForm ? (
+            <div className="space-y-3">
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                placeholder="Rejection reason (required)"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowRejectForm(false)} disabled={review.isPending}>
+                  Back
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={review.isPending || !rejectReason.trim()}
+                  onClick={() => review.mutate({ action: "reject", reason: rejectReason })}
+                >
+                  {review.isPending ? "Rejecting…" : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => review.mutate({ action: "approve" })} disabled={review.isPending}>
+                {review.isPending ? "Accepting…" : "Accept KYC"}
+              </Button>
+              <Button variant="destructive" className="flex-1" onClick={() => setShowRejectForm(true)} disabled={review.isPending}>
+                Reject KYC
+              </Button>
+            </div>
+          ))}
+      </div>
     </div>
   );
 }
@@ -180,6 +287,8 @@ export function AdminClipperDetailPage() {
           </div>
         </div>
       </div>
+
+      <KycReviewCard creator={creator} />
 
       {/* Tabs */}
       <div className="flex border-b border-border">
