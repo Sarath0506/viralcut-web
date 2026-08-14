@@ -599,6 +599,34 @@ export type CampaignInvite = {
   createdAt: string;
 };
 
+export type SupportTicketStatus = "under_investigation" | "resolved";
+
+export type AdminSupportTicket = {
+  id: string;
+  subject: string;
+  message: string;
+  status: SupportTicketStatus;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  creator: {
+    id: string;
+    displayName: string | null;
+    username: string | null;
+    email: string | null;
+    phone: string | null;
+    avatarUrl: string | null;
+  };
+};
+
+export type AdminSupportTicketDetail = AdminSupportTicket & {
+  creator: AdminSupportTicket["creator"] & {
+    kycStatus: KycStatus;
+    createdAt: string;
+  };
+};
+
 const campaignsApi = {
   list: (
     token: string,
@@ -879,6 +907,22 @@ export const adminApi = {
     apiFetch<{ id: string; kycStatus: KycStatus }>(`/admin/creators/${id}/kyc-review`, {
       method: "POST",
       body: JSON.stringify({ action, reason }),
+      accessToken: token,
+    }),
+
+  supportTickets: (token: string, status?: SupportTicketStatus) =>
+    apiFetch<AdminSupportTicket[]>(
+      `/admin/support-tickets${status ? `?status=${status}` : ""}`,
+      { accessToken: token },
+    ),
+
+  supportTicket: (token: string, id: string) =>
+    apiFetch<AdminSupportTicketDetail>(`/admin/support-tickets/${id}`, { accessToken: token }),
+
+  resolveSupportTicket: (token: string, id: string, resolutionNote: string) =>
+    apiFetch<AdminSupportTicket>(`/admin/support-tickets/${id}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ resolutionNote }),
       accessToken: token,
     }),
 

@@ -24,6 +24,8 @@ const styles: Record<string, string> = {
   in_review: "bg-warning/15 text-warning",
   action_required: "bg-primary/15 text-primary",
   proof_complete: "bg-money/15 text-money",
+  under_investigation: "bg-warning/15 text-warning",
+  resolved: "bg-money/15 text-money",
 };
 
 const labels: Record<string, string> = {
