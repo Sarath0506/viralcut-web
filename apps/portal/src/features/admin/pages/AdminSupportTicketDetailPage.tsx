@@ -108,7 +108,7 @@ export function AdminSupportTicketDetailPage() {
                   disabled={respond.isPending || resolutionNote.trim().length < 3}
                   onClick={() => respond.mutate("investigating")}
                 >
-                  {respond.isPending && respond.variables === "investigating" ? "Saving…" : "Still Investigating"}
+                  {respond.isPending && respond.variables === "investigating" ? "Saving…" : "Under Review"}
                 </Button>
                 <Button
                   className="flex-1"
