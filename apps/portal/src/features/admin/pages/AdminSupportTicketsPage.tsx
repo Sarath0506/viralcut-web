@@ -81,6 +81,12 @@ export function AdminSupportTicketsPage() {
           <div className="divide-y divide-border/60">
             {tickets.map((t) => {
               const name = t.creator.displayName ?? t.creator.username ?? "Creator";
+              const effectiveStatus =
+                t.status === "resolved"
+                  ? "resolved"
+                  : t.resolutionNote
+                    ? "support_ticket_under_review"
+                    : "under_investigation";
               return (
                 <Link
                   key={t.id}
@@ -100,7 +106,7 @@ export function AdminSupportTicketsPage() {
                       {name} · {formatDate(t.createdAt)}
                     </p>
                   </div>
-                  <StatusPill status={t.status} className="shrink-0" />
+                  <StatusPill status={effectiveStatus} className="shrink-0" />
                 </Link>
               );
             })}

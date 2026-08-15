@@ -26,10 +26,12 @@ const styles: Record<string, string> = {
   proof_complete: "bg-money/15 text-money",
   under_investigation: "bg-warning/15 text-warning",
   resolved: "bg-money/15 text-money",
+  support_ticket_under_review: "bg-primary/15 text-primary",
 };
 
 const labels: Record<string, string> = {
   closed: "ENDED",
+  support_ticket_under_review: "UNDER REVIEW",
 };
 
 export function StatusPill({
