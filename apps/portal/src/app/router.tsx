@@ -78,6 +78,16 @@ const AdminClipperDetailPage = lazy(() =>
     default: m.AdminClipperDetailPage,
   })),
 );
+const AdminSupportTicketsPage = lazy(() =>
+  import("@/features/admin/pages/AdminSupportTicketsPage").then((m) => ({
+    default: m.AdminSupportTicketsPage,
+  })),
+);
+const AdminSupportTicketDetailPage = lazy(() =>
+  import("@/features/admin/pages/AdminSupportTicketDetailPage").then((m) => ({
+    default: m.AdminSupportTicketDetailPage,
+  })),
+);
 const AdminProfilePage = lazy(() =>
   import("@/features/admin/pages/AdminProfilePage").then((m) => ({
     default: m.AdminProfilePage,
@@ -340,6 +350,14 @@ export const router = createBrowserRouter([
                   {
                     path: "admin/clippers/:id",
                     element: withSuspense(<DetailPageSkeleton />, <AdminClipperDetailPage />),
+                  },
+                  {
+                    path: "admin/support-tickets",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminSupportTicketsPage />),
+                  },
+                  {
+                    path: "admin/support-tickets/:id",
+                    element: withSuspense(<DetailPageSkeleton />, <AdminSupportTicketDetailPage />),
                   },
                   {
                     path: "admin/campaigns",
