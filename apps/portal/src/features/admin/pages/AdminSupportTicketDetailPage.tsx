@@ -49,6 +49,12 @@ export function AdminSupportTicketDetailPage() {
 
   const name = ticket.creator.displayName ?? ticket.creator.username ?? "Creator";
   const isPendingTicket = ticket.status === "under_investigation";
+  const effectiveStatus =
+    ticket.status === "resolved"
+      ? "resolved"
+      : ticket.resolutionNote
+        ? "support_ticket_under_review"
+        : "under_investigation";
 
   return (
     <div className="space-y-6">
@@ -63,7 +69,7 @@ export function AdminSupportTicketDetailPage() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Subject</p>
                 <h1 className="mt-1 text-lg font-bold text-foreground">{ticket.subject}</h1>
               </div>
-              <StatusPill status={ticket.status} className="shrink-0" />
+              <StatusPill status={effectiveStatus} className="shrink-0" />
             </div>
             <div className="px-5 py-4">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
