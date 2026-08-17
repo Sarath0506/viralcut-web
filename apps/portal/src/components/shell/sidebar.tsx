@@ -1,12 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { ShellNavLink } from "@/components/shell/shell-nav-link";
 import {
+  filterAdminNav,
   getNavForRole,
   isNavItemActive,
   portalSidebarLabel,
 } from "@/components/shell/nav-config";
+import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
@@ -19,8 +22,17 @@ export function Sidebar({
 }) {
   const { pathname } = useLocation();
   const role = usePortalRole();
-  const { auth } = useAuth();
-  const navItems = getNavForRole(role ?? "brand");
+  const { auth, getToken } = useAuth();
+
+  const { data: permissions } = useQuery({
+    queryKey: ["admin-my-permissions"],
+    queryFn: () => adminApi.myPermissions(getToken()!),
+    enabled: role === "admin" && Boolean(getToken()),
+    staleTime: 60_000,
+  });
+
+  const navItems =
+    role === "admin" ? filterAdminNav(getNavForRole("admin"), permissions ?? null) : getNavForRole(role ?? "brand");
   const label = portalSidebarLabel(role ?? "brand");
 
   const profileInitials = (auth?.user.displayName ?? auth?.user.email ?? "A")

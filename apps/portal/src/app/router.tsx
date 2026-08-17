@@ -93,6 +93,11 @@ const AdminFaqsPage = lazy(() =>
     default: m.AdminFaqsPage,
   })),
 );
+const AdminRolesPage = lazy(() =>
+  import("@/features/admin/pages/AdminRolesPage").then((m) => ({
+    default: m.AdminRolesPage,
+  })),
+);
 const AdminSupportTicketDetailPage = lazy(() =>
   import("@/features/admin/pages/AdminSupportTicketDetailPage").then((m) => ({
     default: m.AdminSupportTicketDetailPage,
@@ -372,6 +377,10 @@ export const router = createBrowserRouter([
                   {
                     path: "admin/faqs",
                     element: withSuspense(<PortalShellSkeleton />, <AdminFaqsPage />),
+                  },
+                  {
+                    path: "admin/roles",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminRolesPage />),
                   },
                   {
                     path: "admin/support-tickets/:id",
