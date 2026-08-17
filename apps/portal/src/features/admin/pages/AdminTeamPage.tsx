@@ -10,6 +10,8 @@ import { useToast } from "@/components/ui/toaster";
 import { adminApi, type StaffAccessLevel, type StaffMember, type TaskStatus, ApiError } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
+import { AdminAccountsCard } from "./AdminAccountsCard";
+
 /* ── helpers ── */
 function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
@@ -597,6 +599,8 @@ export function AdminTeamPage() {
       {showCreate && <CreateMemberModal onClose={() => setShowCreate(false)} />}
 
       <div className="space-y-6">
+        <AdminAccountsCard />
+
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold tracking-tight">Team Members</h1>

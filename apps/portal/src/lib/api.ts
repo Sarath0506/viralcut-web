@@ -620,6 +620,40 @@ export type AdminSupportTicket = {
   };
 };
 
+export type AdminSection =
+  | "dashboard"
+  | "brands"
+  | "clippers"
+  | "campaigns"
+  | "analytics"
+  | "tickets"
+  | "faqs"
+  | "notifications"
+  | "team";
+
+export type AdminPermissionLevel = "hidden" | "view" | "manage";
+
+export type AdminRole = {
+  id: string;
+  name: string;
+  canSeeMoney: boolean;
+  userCount: number;
+  permissions: { section: AdminSection; level: AdminPermissionLevel }[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminRolesList = {
+  superAdmin: { userCount: number };
+  roles: AdminRole[];
+};
+
+export type EffectiveAdminPermissions = {
+  isSuperAdmin: boolean;
+  canSeeMoney: boolean;
+  sections: Record<AdminSection, AdminPermissionLevel>;
+};
+
 export type Faq = {
   id: string;
   question: string;
@@ -1020,6 +1054,57 @@ export const adminApi = {
       body: JSON.stringify({ orderedIds }),
       accessToken: token,
     }),
+
+  myPermissions: (token: string) =>
+    apiFetch<EffectiveAdminPermissions>("/admin/me/permissions", { accessToken: token }),
+
+  roles: (token: string) => apiFetch<AdminRolesList>("/admin/roles", { accessToken: token }),
+
+  createRole: (token: string, body: { name: string; canSeeMoney?: boolean }) =>
+    apiFetch<AdminRole>("/admin/roles", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  updateRole: (token: string, id: string, body: { name?: string; canSeeMoney?: boolean }) =>
+    apiFetch<AdminRole>(`/admin/roles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  deleteRole: (token: string, id: string) =>
+    apiFetch<{ deleted: boolean }>(`/admin/roles/${id}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
+
+  setRolePermissions: (
+    token: string,
+    id: string,
+    permissions: { section: AdminSection; level: AdminPermissionLevel }[],
+  ) =>
+    apiFetch<AdminRole>(`/admin/roles/${id}/permissions`, {
+      method: "PATCH",
+      body: JSON.stringify({ permissions }),
+      accessToken: token,
+    }),
+
+  resetRoles: (token: string) =>
+    apiFetch<AdminRolesList>("/admin/roles/reset", { method: "PATCH", accessToken: token }),
+
+  assignAdminRole: (token: string, userId: string, adminRoleId: string | null) =>
+    apiFetch<{ id: string; adminRoleId: string | null }>(`/admin/admins/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ adminRoleId }),
+      accessToken: token,
+    }),
+
+  adminAccounts: (token: string) =>
+    apiFetch<
+      { id: string; name: string; email: string | null; adminRoleId: string | null; adminRoleName: string }[]
+    >("/admin/admins", { accessToken: token }),
 
   uploadBrandLogo: (token: string, file: File) => {
     const form = new FormData();
