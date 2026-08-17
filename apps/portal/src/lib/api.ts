@@ -620,6 +620,33 @@ export type AdminSupportTicket = {
   };
 };
 
+export type BulkNotificationChannelStatus = {
+  pushConfigured: boolean;
+  whatsappConfigured: boolean;
+};
+
+export type BulkNotificationLog = {
+  id: string;
+  title: string;
+  message: string;
+  usedPush: boolean;
+  usedWhatsapp: boolean;
+  recipientCount: number;
+  pushSentCount: number;
+  pushFailedCount: number;
+  whatsappSentCount: number;
+  whatsappFailedCount: number;
+  createdAt: string;
+  sentBy: string;
+};
+
+export type BulkNotificationHistoryPage = {
+  items: BulkNotificationLog[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
 export type AdminSupportTicketDetail = AdminSupportTicket & {
   creator: AdminSupportTicket["creator"] & {
     kycStatus: KycStatus;
@@ -928,6 +955,26 @@ export const adminApi = {
     apiFetch<AdminSupportTicket>(`/admin/support-tickets/${id}/respond`, {
       method: "POST",
       body: JSON.stringify({ action, note }),
+      accessToken: token,
+    }),
+
+  bulkNotificationChannelStatus: (token: string) =>
+    apiFetch<BulkNotificationChannelStatus>("/admin/bulk-notifications/channel-status", {
+      accessToken: token,
+    }),
+
+  sendBulkNotification: (
+    token: string,
+    body: { recipientIds: string[]; usePush: boolean; useWhatsapp: boolean; title: string; message: string },
+  ) =>
+    apiFetch<BulkNotificationLog>("/admin/bulk-notifications", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  bulkNotificationHistory: (token: string, page = 1) =>
+    apiFetch<BulkNotificationHistoryPage>(`/admin/bulk-notifications?page=${page}`, {
       accessToken: token,
     }),
 

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  Bell,
   Building2,
   CheckSquare,
   CreditCard,
@@ -50,6 +51,7 @@ const adminNavItems: PortalNavItem[] = [
   },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/support-tickets", label: "Support", icon: LifeBuoy, matchNested: true },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/team", label: "Team", icon: UserCog },
 ];
 
@@ -72,6 +74,7 @@ export function resolvePortalTitle(pathname: string, role: Portal): string {
   if (pathname === "/admin/brands") return "Brands";
   if (pathname === "/admin/clippers") return "Clippers";
   if (pathname === "/admin/support-tickets") return "Support Tickets";
+  if (pathname === "/admin/notifications") return "Notifications";
   if (pathname === "/admin/campaigns") return "Campaigns";
   if (pathname === "/campaigns") return "Campaigns";
   if (pathname.startsWith("/campaigns/new") || pathname.startsWith("/admin/campaigns/new")) {
