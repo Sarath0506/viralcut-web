@@ -654,6 +654,14 @@ export type EffectiveAdminPermissions = {
   sections: Record<AdminSection, AdminPermissionLevel>;
 };
 
+export type AdminAccount = {
+  id: string;
+  name: string;
+  email: string | null;
+  adminRoleId: string | null;
+  adminRoleName: string;
+};
+
 export type Faq = {
   id: string;
   question: string;
@@ -1102,9 +1110,17 @@ export const adminApi = {
     }),
 
   adminAccounts: (token: string) =>
-    apiFetch<
-      { id: string; name: string; email: string | null; adminRoleId: string | null; adminRoleName: string }[]
-    >("/admin/admins", { accessToken: token }),
+    apiFetch<AdminAccount[]>("/admin/admins", { accessToken: token }),
+
+  createAdmin: (
+    token: string,
+    body: { name: string; email: string; password: string; adminRoleId?: string | null },
+  ) =>
+    apiFetch<AdminAccount>("/admin/admins", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
 
   uploadBrandLogo: (token: string, file: File) => {
     const form = new FormData();
