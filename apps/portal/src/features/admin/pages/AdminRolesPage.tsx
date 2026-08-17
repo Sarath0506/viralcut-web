@@ -10,6 +10,8 @@ import { useToast } from "@/components/ui/toaster";
 import { adminApi, type AdminPermissionLevel, type AdminRole, type AdminSection } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 
+import { AdminAccountsCard } from "./AdminAccountsCard";
+
 const SECTIONS: { key: AdminSection; label: string }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "brands", label: "Brands" },
@@ -111,6 +113,8 @@ export function AdminRolesPage() {
           </p>
         </div>
       </div>
+
+      <AdminAccountsCard />
 
       {isPending ? (
         <Skeleton className="h-96 w-full rounded-2xl" />
