@@ -620,6 +620,43 @@ export type AdminSupportTicket = {
   };
 };
 
+export type Faq = {
+  id: string;
+  question: string;
+  answer: string;
+  order: number;
+  isVisible: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BulkNotificationChannelStatus = {
+  pushConfigured: boolean;
+  whatsappConfigured: boolean;
+};
+
+export type BulkNotificationLog = {
+  id: string;
+  title: string;
+  message: string;
+  usedPush: boolean;
+  usedWhatsapp: boolean;
+  recipientCount: number;
+  pushSentCount: number;
+  pushFailedCount: number;
+  whatsappSentCount: number;
+  whatsappFailedCount: number;
+  createdAt: string;
+  sentBy: string;
+};
+
+export type BulkNotificationHistoryPage = {
+  items: BulkNotificationLog[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
 export type AdminSupportTicketDetail = AdminSupportTicket & {
   creator: AdminSupportTicket["creator"] & {
     kycStatus: KycStatus;
@@ -928,6 +965,59 @@ export const adminApi = {
     apiFetch<AdminSupportTicket>(`/admin/support-tickets/${id}/respond`, {
       method: "POST",
       body: JSON.stringify({ action, note }),
+      accessToken: token,
+    }),
+
+  bulkNotificationChannelStatus: (token: string) =>
+    apiFetch<BulkNotificationChannelStatus>("/admin/bulk-notifications/channel-status", {
+      accessToken: token,
+    }),
+
+  sendBulkNotification: (
+    token: string,
+    body: { recipientIds: string[]; usePush: boolean; useWhatsapp: boolean; title: string; message: string },
+  ) =>
+    apiFetch<BulkNotificationLog>("/admin/bulk-notifications", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  bulkNotificationHistory: (token: string, page = 1) =>
+    apiFetch<BulkNotificationHistoryPage>(`/admin/bulk-notifications?page=${page}`, {
+      accessToken: token,
+    }),
+
+  faqs: (token: string) => apiFetch<Faq[]>("/admin/faqs", { accessToken: token }),
+
+  createFaq: (token: string, body: { question: string; answer: string; isVisible?: boolean }) =>
+    apiFetch<Faq>("/admin/faqs", {
+      method: "POST",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  updateFaq: (
+    token: string,
+    id: string,
+    body: { question?: string; answer?: string; isVisible?: boolean },
+  ) =>
+    apiFetch<Faq>(`/admin/faqs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      accessToken: token,
+    }),
+
+  deleteFaq: (token: string, id: string) =>
+    apiFetch<{ deleted: boolean }>(`/admin/faqs/${id}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
+
+  reorderFaqs: (token: string, orderedIds: string[]) =>
+    apiFetch<Faq[]>("/admin/faqs/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ orderedIds }),
       accessToken: token,
     }),
 

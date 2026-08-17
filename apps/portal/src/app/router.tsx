@@ -83,6 +83,16 @@ const AdminSupportTicketsPage = lazy(() =>
     default: m.AdminSupportTicketsPage,
   })),
 );
+const AdminNotificationsPage = lazy(() =>
+  import("@/features/admin/pages/AdminNotificationsPage").then((m) => ({
+    default: m.AdminNotificationsPage,
+  })),
+);
+const AdminFaqsPage = lazy(() =>
+  import("@/features/admin/pages/AdminFaqsPage").then((m) => ({
+    default: m.AdminFaqsPage,
+  })),
+);
 const AdminSupportTicketDetailPage = lazy(() =>
   import("@/features/admin/pages/AdminSupportTicketDetailPage").then((m) => ({
     default: m.AdminSupportTicketDetailPage,
@@ -354,6 +364,14 @@ export const router = createBrowserRouter([
                   {
                     path: "admin/support-tickets",
                     element: withSuspense(<PortalShellSkeleton />, <AdminSupportTicketsPage />),
+                  },
+                  {
+                    path: "admin/notifications",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminNotificationsPage />),
+                  },
+                  {
+                    path: "admin/faqs",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminFaqsPage />),
                   },
                   {
                     path: "admin/support-tickets/:id",
