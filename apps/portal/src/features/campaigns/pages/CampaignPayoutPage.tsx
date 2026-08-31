@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, ArrowRight, Eye, TrendingUp } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, TrendingUp, UserPlus } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import {
 } from "@/features/campaigns/components/campaign-wizard-layout";
 import { WizardStepper } from "@/features/campaigns/components/wizard-stepper";
 import {
+  estimateMinClippersNeeded,
   estimateViewsFromBudget,
   formatEstimatedViews,
 } from "@/features/campaigns/lib/estimate-views";
@@ -51,6 +52,7 @@ export function CampaignPayoutPage() {
   const maxPayout = Number(draft.maxPayoutRupees);
   const budget = Number(draft.budgetRupees);
   const estimatedViews = estimateViewsFromBudget(budget, rate);
+  const minClippersNeeded = estimateMinClippersNeeded(budget, maxPayout);
   const platformFee = Number.isFinite(budget) ? budget * PLATFORM_FEE_RATE : 0;
   const totalCheckout = Number.isFinite(budget) ? budget + platformFee : 0;
 
@@ -158,6 +160,13 @@ export function CampaignPayoutPage() {
                     ? `${formatRupees(rate)} / 1K views · ${formatRupees(budget || 0)} pool`
                     : "Enter a valid rate and budget to see this."}
                 </div>
+
+                {minClippersNeeded > 0 && (
+                  <div className="mt-2 flex items-center gap-2 rounded-xl bg-background/60 px-3 py-2 text-xs text-muted">
+                    <UserPlus className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    At least {minClippersNeeded.toLocaleString("en-IN")} clipper{minClippersNeeded !== 1 ? "s" : ""} needed to spend the full pool
+                  </div>
+                )}
               </div>
             </div>
           </div>
