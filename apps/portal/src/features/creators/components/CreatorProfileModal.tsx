@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
 import { creatorApi, type CreatorCampaignSummary } from "@/lib/api";
+import { linkedProfileUrl } from "@/lib/social-profile-url";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
 function initials(name: string) {
@@ -117,18 +120,37 @@ export function CreatorProfileModal({ creatorId, onClose }: { creatorId: string;
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Linked Accounts</p>
                   <div className="space-y-1.5">
-                    {creator.linkedProfiles.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                        <div className="min-w-0">
-                          <span className="font-medium capitalize">{p.platform}</span>
-                          <span className="ml-1.5 truncate text-muted">@{p.handle}</span>
-                          {p.label && <span className="ml-1.5 text-xs text-muted/70">({p.label})</span>}
+                    {creator.linkedProfiles.map((p) => {
+                      const profileUrl = linkedProfileUrl(p.platform, p.handle);
+                      const rowClassName = cn(
+                        "flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm",
+                        profileUrl && "transition-colors hover:bg-surface-variant/40",
+                      );
+                      const content = (
+                        <>
+                          <div className="min-w-0">
+                            <span className="font-medium capitalize">{p.platform}</span>
+                            <span className="ml-1.5 truncate text-muted">@{p.handle}</span>
+                            {p.label && <span className="ml-1.5 text-xs text-muted/70">({p.label})</span>}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {p.isDefault && (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Default</span>
+                            )}
+                            {profileUrl && <ExternalLink className="h-3.5 w-3.5 text-muted" />}
+                          </div>
+                        </>
+                      );
+                      return profileUrl ? (
+                        <a key={p.id} href={profileUrl} target="_blank" rel="noopener noreferrer" className={rowClassName}>
+                          {content}
+                        </a>
+                      ) : (
+                        <div key={p.id} className={rowClassName}>
+                          {content}
                         </div>
-                        {p.isDefault && (
-                          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Default</span>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
