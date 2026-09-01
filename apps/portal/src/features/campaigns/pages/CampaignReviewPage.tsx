@@ -27,6 +27,7 @@ import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { hasInvalidReferenceAssets } from "@/features/campaigns/lib/campaign-payload";
 import type { ReferenceAsset } from "@/features/campaigns/lib/reference-assets";
 import {
+  estimateMinClippersNeeded,
   estimateViewsFromBudget,
   formatEstimatedViews,
 } from "@/features/campaigns/lib/estimate-views";
@@ -87,14 +88,15 @@ export function CampaignReviewPage() {
     () => parseRulePoints(draft.avoidRules),
     [draft.avoidRules],
   );
-  const estimatedViews = estimateViewsFromBudget(
-    Number(draft.budgetRupees),
-    Number(draft.ratePer1kRupees),
-  );
-
   const rate = Number(draft.ratePer1kRupees);
   const maxPayout = Number(draft.maxPayoutRupees);
   const budget = Number(draft.budgetRupees);
+  // NOT fee-adjusted: CampaignPayoutPage already charges the platform fee
+  // on top of this budget at checkout (totalCheckout = budget + fee), so
+  // the full budget the brand types in is what's actually payable to
+  // clippers — deducting the fee again here would double-count it.
+  const estimatedViews = estimateViewsFromBudget(budget, rate);
+  const minClippersNeeded = estimateMinClippersNeeded(budget, maxPayout);
   const budgetValid =
     Number.isFinite(rate) &&
     rate > 0 &&
@@ -222,14 +224,25 @@ export function CampaignReviewPage() {
                   ₹{Number(draft.budgetRupees || 0).toLocaleString("en-IN")} total pool
                 </p>
 
-                <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                    <Eye className="h-3.5 w-3.5" />
-                    Estimated Views
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                      <Eye className="h-3.5 w-3.5" />
+                      Estimated Views
+                    </div>
+                    <p className="mt-1 font-display text-2xl font-black text-foreground">
+                      {formatEstimatedViews(estimatedViews)}
+                    </p>
                   </div>
-                  <p className="mt-1 font-display text-2xl font-black text-foreground">
-                    {formatEstimatedViews(estimatedViews)}
-                  </p>
+                  <div className="rounded-xl border border-border bg-surface-variant/40 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Min. Clippers
+                    </div>
+                    <p className="mt-1 font-display text-2xl font-black text-foreground">
+                      {minClippersNeeded > 0 ? minClippersNeeded.toLocaleString("en-IN") : "—"}
+                    </p>
+                  </div>
                 </div>
               </ReviewCard>
             </div>

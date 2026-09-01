@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "@/components/ui/back-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
 import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -51,6 +53,80 @@ const CAMPAIGN_STATUS_STYLE: Record<string, string> = {
   paused: "bg-orange-500 text-white",
   closed: "bg-red-600 text-white",
 };
+
+/* ── Admin override: open intake for N more clippers past the pool threshold ── */
+
+function ClipperIntakeDialog({
+  open,
+  loading,
+  onSubmit,
+  onCancel,
+}: {
+  open: boolean;
+  loading: boolean;
+  onSubmit: (extraClipperAllowance: number) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState("5");
+  const parsed = Number(value);
+  const valid = Number.isInteger(parsed) && parsed >= 0;
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40"
+        aria-label="Close dialog"
+        onClick={onCancel}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clipper-intake-title"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl"
+      >
+        <h2 id="clipper-intake-title" className="text-lg font-bold text-foreground">
+          Open slots for more clippers
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          This campaign's pool crossed its intake threshold, so new clippers are currently
+          blocked from joining. Set how many extra clippers can join past that point — set it
+          back to 0 to close intake again.
+        </p>
+        <label className="mt-4 block text-xs font-semibold text-muted" htmlFor="extra-clipper-allowance">
+          Extra clippers allowed
+        </label>
+        <Input
+          id="extra-clipper-allowance"
+          type="number"
+          min={0}
+          step={1}
+          className="mt-1.5"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          autoFocus
+        />
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="bg-primary"
+            onClick={() => valid && onSubmit(parsed)}
+            disabled={loading || !valid}
+          >
+            {loading ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 /* ── Work Submissions / Proof of Work (actionable, open review modal) ── */
 
@@ -465,6 +541,7 @@ export function CampaignDetailPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<{ id: string; section: "submissions" | "proof" } | null>(null);
   const [selectedClipper, setSelectedClipper] = useState<ClipperProfile | null>(null);
   const [pendingStatus, setPendingStatus] = useState<"live" | "paused" | null>(null);
+  const [showClipperIntakeDialog, setShowClipperIntakeDialog] = useState(false);
 
   const { data: campaign, isPending } = useCampaign(id);
   const { data: deliverables = [] } = useQuery({
@@ -473,6 +550,22 @@ export function CampaignDetailPage() {
     enabled: Boolean(getToken() && id),
   });
   const updateStatus = useUpdateCampaignStatus();
+  const queryClient = useQueryClient();
+
+  const clipperIntakeMutation = useMutation({
+    mutationFn: (extraClipperAllowance: number) =>
+      adminApi.setClipperIntake(getToken()!, id!, extraClipperAllowance),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+      setShowClipperIntakeDialog(false);
+      toast(
+        result.newClipperIntakeStatus === "closed_at_threshold"
+          ? "Intake closed — new clippers can't join right now"
+          : `Intake opened for ${result.extraClipperAllowance} more clipper${result.extraClipperAllowance === 1 ? "" : "s"}`,
+      );
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Could not update intake", "error"),
+  });
 
   if (isPending || !campaign) return <DetailPageSkeleton />;
 
@@ -601,6 +694,21 @@ export function CampaignDetailPage() {
                   <p className="text-[10px] text-muted">{label}</p>
                 </div>
               ))}
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => setShowClipperIntakeDialog(true)}
+                  className="rounded-xl border border-border bg-surface-variant px-4 py-2 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
+                >
+                  <StatusPill status={campaign.newClipperIntakeStatus} />
+                  <p className="mt-1 text-[10px] text-muted">Slots · manage</p>
+                </button>
+              ) : (
+                <div className="rounded-xl border border-border bg-surface-variant px-4 py-2 text-center">
+                  <StatusPill status={campaign.newClipperIntakeStatus} />
+                  <p className="mt-1 text-[10px] text-muted">Slots</p>
+                </div>
+              )}
               <div className="ml-auto text-right">
                 <p className="text-xs text-muted">Budget</p>
                 <p className="text-sm font-bold">{formatInr(campaign.budgetUsedPaise)} <span className="text-muted font-normal">/ {formatInr(campaign.budgetPaise)}</span></p>
@@ -765,6 +873,13 @@ export function CampaignDetailPage() {
         loading={updateStatus.isPending}
         onConfirm={() => void confirmStatusChange()}
         onCancel={() => setPendingStatus(null)}
+      />
+
+      <ClipperIntakeDialog
+        open={showClipperIntakeDialog}
+        loading={clipperIntakeMutation.isPending}
+        onSubmit={(extraClipperAllowance) => clipperIntakeMutation.mutate(extraClipperAllowance)}
+        onCancel={() => setShowClipperIntakeDialog(false)}
       />
     </div>
   );

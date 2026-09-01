@@ -28,6 +28,7 @@ import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
 import { adminApi, type AdminCreatorCampaignEntry, type AdminCreatorDetail, type KycStatus } from "@/lib/api";
 import { formatInr, formatViews } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { connectedSocialUrl } from "@/lib/social-profile-url";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -473,8 +474,13 @@ export function AdminClipperDetailPage() {
               <div className="divide-y divide-border/60">
                 {creator.linkedProfiles.map((p) => {
                   const Icon = platformIcon(p.platform);
-                  return (
-                    <div key={p.id} className="flex items-center gap-3 px-5 py-3.5">
+                  const profileUrl = connectedSocialUrl(p.platform, p.socialLinks);
+                  const rowClassName = cn(
+                    "flex items-center gap-3 px-5 py-3.5",
+                    profileUrl && "transition-colors hover:bg-surface-variant/40",
+                  );
+                  const content = (
+                    <>
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-muted">
                         {p.avatarUrl ? (
                           <img src={p.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -492,6 +498,16 @@ export function AdminClipperDetailPage() {
                       {p.isDefault && (
                         <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Default</span>
                       )}
+                      {profileUrl && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" />}
+                    </>
+                  );
+                  return profileUrl ? (
+                    <a key={p.id} href={profileUrl} target="_blank" rel="noopener noreferrer" className={rowClassName}>
+                      {content}
+                    </a>
+                  ) : (
+                    <div key={p.id} className={rowClassName}>
+                      {content}
                     </div>
                   );
                 })}
