@@ -6,11 +6,22 @@ const PLATFORM_PROFILE_URL: Record<string, (handle: string) => string> = {
   linkedin: (handle) => `https://linkedin.com/in/${handle}`,
 };
 
-/** A creator's linked profile only ever stores a bare handle, not a full
- * URL (unlike a brand's free-form social links, which store the URL
- * directly) — build the profile link client-side. Returns null for a
+/** A CreatorProfile's own `platform`/`handle` is just the persona the
+ * creator picked inside the app (e.g. "demon") — not a real social media
+ * username, so it must never be used to build a profile link. The actual
+ * account they connected lives in that profile's `socialLinks` map, keyed
+ * by platform, and the mobile "connect account" flow accepts either a bare
+ * "@handle" or a full profile URL for that value — normalize both here.
+ * Returns null when nothing is connected for this platform, or it's a
  * platform we don't know how to link to. */
-export function linkedProfileUrl(platform: string, handle: string): string | null {
+export function connectedSocialUrl(
+  platform: string,
+  socialLinks: Record<string, string> | null | undefined,
+): string | null {
+  const handleOrUrl = socialLinks?.[platform.toLowerCase()]?.trim();
+  if (!handleOrUrl) return null;
+  if (/^https?:\/\//i.test(handleOrUrl)) return handleOrUrl;
+
   const build = PLATFORM_PROFILE_URL[platform.toLowerCase()];
-  return build ? build(handle.replace(/^@/, "")) : null;
+  return build ? build(handleOrUrl.replace(/^@/, "")) : null;
 }

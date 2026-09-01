@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
 import { creatorApi, type CreatorCampaignSummary } from "@/lib/api";
-import { linkedProfileUrl } from "@/lib/social-profile-url";
+import { connectedSocialUrl } from "@/lib/social-profile-url";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -121,7 +121,7 @@ export function CreatorProfileModal({ creatorId, onClose }: { creatorId: string;
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Linked Accounts</p>
                   <div className="space-y-1.5">
                     {creator.linkedProfiles.map((p) => {
-                      const profileUrl = linkedProfileUrl(p.platform, p.handle);
+                      const profileUrl = connectedSocialUrl(p.platform, p.socialLinks);
                       const rowClassName = cn(
                         "flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm",
                         profileUrl && "transition-colors hover:bg-surface-variant/40",

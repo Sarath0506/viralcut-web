@@ -450,6 +450,7 @@ export type LinkedCreatorProfile = {
   label: string | null;
   avatarUrl: string | null;
   isDefault: boolean;
+  socialLinks: Record<string, string>;
 };
 
 export type AdminBrand = {

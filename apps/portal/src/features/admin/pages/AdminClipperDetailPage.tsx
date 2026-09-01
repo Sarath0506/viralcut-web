@@ -28,7 +28,7 @@ import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
 import { adminApi, type AdminCreatorCampaignEntry, type AdminCreatorDetail, type KycStatus } from "@/lib/api";
 import { formatInr, formatViews } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media-url";
-import { linkedProfileUrl } from "@/lib/social-profile-url";
+import { connectedSocialUrl } from "@/lib/social-profile-url";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -474,7 +474,7 @@ export function AdminClipperDetailPage() {
               <div className="divide-y divide-border/60">
                 {creator.linkedProfiles.map((p) => {
                   const Icon = platformIcon(p.platform);
-                  const profileUrl = linkedProfileUrl(p.platform, p.handle);
+                  const profileUrl = connectedSocialUrl(p.platform, p.socialLinks);
                   const rowClassName = cn(
                     "flex items-center gap-3 px-5 py-3.5",
                     profileUrl && "transition-colors hover:bg-surface-variant/40",
