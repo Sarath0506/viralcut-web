@@ -319,6 +319,7 @@ export type Campaign = {
   budgetUsedPaise: number;
   poolPercent: number;
   poolRemainingPercent: number;
+  newClipperIntakeStatus: "open" | "closed_at_threshold" | "manually_extended";
   startDate: string | null;
   createdAt: string;
   updatedAt?: string;
@@ -1249,6 +1250,28 @@ export const adminApi = {
       method: "POST",
       accessToken: token,
     }),
+
+  // Pool / intake overrides
+  setClipperIntake: (token: string, campaignId: string, extraClipperAllowance: number) =>
+    apiFetch<{
+      id: string;
+      newClipperIntakeStatus: Campaign["newClipperIntakeStatus"];
+      extraClipperAllowance: number | null;
+    }>(`/admin/campaigns/${campaignId}/clipper-intake`, {
+      method: "PATCH",
+      body: JSON.stringify({ extraClipperAllowance }),
+      accessToken: token,
+    }),
+
+  setPoolOverflow: (token: string, campaignId: string, allowExcessViewsToFillPool: boolean) =>
+    apiFetch<{ id: string; allowExcessViewsToFillPool: boolean }>(
+      `/admin/campaigns/${campaignId}/pool-overflow`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ allowExcessViewsToFillPool }),
+        accessToken: token,
+      },
+    ),
 };
 
 /** @deprecated use portalApi */

@@ -27,11 +27,16 @@ const styles: Record<string, string> = {
   under_investigation: "bg-warning/15 text-warning",
   resolved: "bg-money/15 text-money",
   support_ticket_under_review: "bg-primary/15 text-primary",
+  open: "bg-money/15 text-money",
+  closed_at_threshold: "bg-warning/15 text-warning",
+  manually_extended: "bg-primary/15 text-primary",
 };
 
 const labels: Record<string, string> = {
   closed: "ENDED",
   support_ticket_under_review: "UNDER REVIEW",
+  closed_at_threshold: "CLOSED",
+  manually_extended: "EXTENDED",
 };
 
 export function StatusPill({
