@@ -978,6 +978,12 @@ export const adminApi = {
       accessToken: token,
     }),
 
+  deleteBrand: (token: string, id: string) =>
+    apiFetch<{ deleted: boolean }>(`/admin/brands/${id}`, {
+      method: "DELETE",
+      accessToken: token,
+    }),
+
   creators: (token: string) =>
     apiFetch<AdminCreatorSummary[]>("/admin/creators", { accessToken: token }),
 
