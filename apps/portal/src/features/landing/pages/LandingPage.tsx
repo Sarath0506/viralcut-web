@@ -32,10 +32,9 @@ import { HowItWorksSticky } from "@/features/landing/components/how-it-works-sti
 import { BentoFeatures } from "@/features/landing/components/bento-features";
 import { RateCalculator } from "@/features/landing/components/rate-calculator";
 
-// TEMPORARY: points at the halchal-clipper-site demo app running locally
-// (Login with Instagram → Profile / Feed / Quick Reply / Post / Insights /
-// Logout). Swap for its real deployed URL once it's hosted somewhere.
-const CLIPPER_LOGIN_URL = "http://localhost:4000";
+// Deployed as its own Railway service (Login with Instagram → Profile /
+// Feed / Quick Reply / Post / Insights / Logout).
+const CLIPPER_LOGIN_URL = "https://halchal-clipper-site-production.up.railway.app";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
