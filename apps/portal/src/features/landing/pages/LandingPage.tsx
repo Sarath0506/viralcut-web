@@ -32,6 +32,10 @@ import { HowItWorksSticky } from "@/features/landing/components/how-it-works-sti
 import { BentoFeatures } from "@/features/landing/components/bento-features";
 import { RateCalculator } from "@/features/landing/components/rate-calculator";
 
+// Deployed as its own Railway service (Login with Instagram → Profile /
+// Feed / Quick Reply / Post / Insights / Logout).
+const CLIPPER_LOGIN_URL = "https://halchal-clipper-site-production.up.railway.app";
+
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 function Nav() {
@@ -67,6 +71,13 @@ function Nav() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <a
+            href={CLIPPER_LOGIN_URL}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:text-white"
+          >
+            <Instagram className="h-3.5 w-3.5" />
+            Clipper Login
+          </a>
           {auth ? (
             <Magnetic>
               <Link
@@ -109,6 +120,14 @@ function Nav() {
             </a>
             <a href="#pricing" className="text-sm text-white/60 hover:text-white" onClick={() => setOpen(false)}>
               Pricing
+            </a>
+            <a
+              href={CLIPPER_LOGIN_URL}
+              className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white"
+              onClick={() => setOpen(false)}
+            >
+              <Instagram className="h-3.5 w-3.5" />
+              Clipper Login
             </a>
             <div className="flex flex-col gap-3 border-t border-white/10 pt-4">
               {auth ? (
