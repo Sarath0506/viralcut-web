@@ -67,6 +67,13 @@ function Nav() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <Link
+            to="/clipper-login"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-sm font-medium text-white/60 transition-colors hover:text-white"
+          >
+            <Instagram className="h-3.5 w-3.5" />
+            Clipper Login
+          </Link>
           {auth ? (
             <Magnetic>
               <Link
@@ -110,6 +117,14 @@ function Nav() {
             <a href="#pricing" className="text-sm text-white/60 hover:text-white" onClick={() => setOpen(false)}>
               Pricing
             </a>
+            <Link
+              to="/clipper-login"
+              className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white"
+              onClick={() => setOpen(false)}
+            >
+              <Instagram className="h-3.5 w-3.5" />
+              Clipper Login
+            </Link>
             <div className="flex flex-col gap-3 border-t border-white/10 pt-4">
               {auth ? (
                 <Link
