@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import { LandingPage } from "@/features/landing/pages/LandingPage";
-import { ClipperLoginPage } from "@/features/landing/pages/ClipperLoginPage";
 import { DeleteAccountPage } from "@/features/legal/pages/DeleteAccountPage";
 import { PrivacyPolicyPage } from "@/features/legal/pages/PrivacyPolicyPage";
 import { SupportPage } from "@/features/legal/pages/SupportPage";
@@ -246,10 +245,6 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <LandingPage /> },
-      {
-        path: "clipper-login",
-        element: <ClipperLoginPage />,
-      },
       {
         path: "share/campaigns/:id",
         element: withSuspense(null, <PublicCampaignPage />),
