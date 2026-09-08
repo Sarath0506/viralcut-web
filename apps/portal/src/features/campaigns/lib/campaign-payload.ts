@@ -82,6 +82,8 @@ export function buildCampaignBody(
     doRules: draft.doRules || undefined,
     avoidRules: draft.avoidRules || undefined,
     sourceAssets: sourceAssets.length > 0 ? sourceAssets : undefined,
+    sourceVideoRequirement: draft.sourceVideoRequirement,
+    sourceAudioRequirement: draft.sourceAudioRequirement,
     referenceAssets: referenceAssets.length > 0 ? referenceAssets : undefined,
     coverImageUrl: draft.coverImageUrl || undefined,
     brief: brief || undefined,

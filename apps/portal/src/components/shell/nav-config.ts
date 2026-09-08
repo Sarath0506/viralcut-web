@@ -11,6 +11,7 @@ import {
   Megaphone,
   Settings,
   Shield,
+  ShieldCheck,
   UserCog,
   Users,
 } from "lucide-react";
@@ -52,6 +53,7 @@ const adminNavItems: PortalNavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "dashboard" },
   { href: "/admin/brands", label: "Brands", icon: Building2, matchNested: true, section: "brands" },
   { href: "/admin/clippers", label: "Clippers", icon: Users, matchNested: true, section: "clippers" },
+  { href: "/admin/verifications", label: "Verification", icon: ShieldCheck, section: "clippers" },
   {
     href: "/admin/campaigns",
     label: "Campaigns",
@@ -107,6 +109,7 @@ export function resolvePortalTitle(pathname: string, role: Portal): string {
   }
   if (pathname === "/admin/brands") return "Brands";
   if (pathname === "/admin/clippers") return "Clippers";
+  if (pathname === "/admin/verifications") return "Verification";
   if (pathname === "/admin/support-tickets") return "Support Tickets";
   if (pathname === "/admin/notifications") return "Notifications";
   if (pathname === "/admin/faqs") return "FAQ Management";

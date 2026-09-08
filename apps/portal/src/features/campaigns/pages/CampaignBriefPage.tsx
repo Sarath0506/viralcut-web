@@ -29,6 +29,47 @@ import { useWizardBack } from "@/features/campaigns/hooks/use-wizard-back";
 import { useCampaignWizard } from "@/providers/campaign-wizard";
 import { useAuth } from "@/providers/auth-provider";
 
+type SourceRequirement = "mandatory" | "optional" | "not_required";
+
+const REQUIREMENT_OPTIONS: { value: SourceRequirement; label: string }[] = [
+  { value: "mandatory", label: "Mandatory" },
+  { value: "optional", label: "Optional" },
+  { value: "not_required", label: "Not required" },
+];
+
+function RequirementToggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: SourceRequirement;
+  onChange: (value: SourceRequirement) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-xs font-medium text-foreground">{label}</span>
+      <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+        {REQUIREMENT_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              value === option.value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CardHeader({ icon: Icon, title }: { icon: typeof Lightbulb; title: string }) {
   return (
     <div className="mb-1 flex items-center gap-2">
@@ -208,11 +249,47 @@ export function CampaignBriefPage() {
             {/* ── Source assets ── */}
             <div className="rounded-2xl border border-border bg-surface p-5">
               <CardHeader icon={Paperclip} title="Source Assets" />
-              <p className="mb-3 text-xs text-muted">Drive or YouTube links creators can use.</p>
+              <p className="mb-3 text-xs text-muted">Drive/YouTube links, or a file uploaded from this device, that creators can use.</p>
               <SourceAssetsEditor
                 assets={draft.sourceAssets}
                 onChange={(sourceAssets) => update({ sourceAssets })}
+                onUploadFile={async (file) => {
+                  try {
+                    const uploaded = await brandApi.campaigns.uploadReferenceAsset(getToken()!, file);
+                    toast("File uploaded.", "success");
+                    return normalizeUploadUrl(uploaded);
+                  } catch (error) {
+                    toast(
+                      error instanceof ApiError
+                        ? error.message
+                        : error instanceof Error
+                          ? error.message
+                          : "Failed to upload file",
+                      "error",
+                    );
+                    throw error;
+                  }
+                }}
+                onCheckUrl={(url) => brandApi.campaigns.checkSourceAssetUrl(getToken()!, url)}
               />
+              {draft.sourceAssets.length > 0 ? (
+                <div className="mt-4 space-y-2.5 border-t border-border pt-4">
+                  <RequirementToggle
+                    label="Clippers must use this footage"
+                    value={draft.sourceVideoRequirement}
+                    onChange={(sourceVideoRequirement) => update({ sourceVideoRequirement })}
+                  />
+                  <RequirementToggle
+                    label="Clippers must use this audio/song"
+                    value={draft.sourceAudioRequirement}
+                    onChange={(sourceAudioRequirement) => update({ sourceAudioRequirement })}
+                  />
+                  <p className="text-[11px] text-muted">
+                    "Optional" still gets checked and shown on review, but never blocks a submission on its own.
+                    Use this when only the audio matters (e.g. pushing a song) and any footage is fine.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 

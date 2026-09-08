@@ -73,6 +73,23 @@ export function useUpdateCampaignStatus() {
   });
 }
 
+export function useUpdateCampaignAutoReview() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, autoReviewEnabled }: { id: string; autoReviewEnabled: boolean }) => {
+      const token = getToken();
+      if (!token) throw new Error("Your session expired. Please log in again.");
+      return portalApi.campaigns.update(token, id, { autoReviewEnabled });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign"] });
+    },
+  });
+}
+
 export function useDeleteCampaign() {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();

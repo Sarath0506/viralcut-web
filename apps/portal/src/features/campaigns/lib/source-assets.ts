@@ -1,4 +1,4 @@
-export type SourceAssetType = "drive" | "youtube";
+export type SourceAssetType = "drive" | "youtube" | "upload";
 
 export type SourceAsset = {
   id: string;

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   Clock,
+  Eye,
+  EyeOff,
   ExternalLink,
   FileText,
   Globe,
@@ -25,7 +27,13 @@ import { DetailPageSkeleton } from "@/components/ui/page-skeletons";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useToast } from "@/components/ui/toaster";
 import { formatDate } from "@/features/campaigns/lib/campaign-board-data";
-import { adminApi, type AdminCreatorCampaignEntry, type AdminCreatorDetail, type KycStatus } from "@/lib/api";
+import {
+  adminApi,
+  type AdminCreatorCampaignEntry,
+  type AdminCreatorDetail,
+  type AdminCreatorPayoutMethod,
+  type KycStatus,
+} from "@/lib/api";
 import { formatInr, formatViews } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { connectedSocialUrl } from "@/lib/social-profile-url";
@@ -61,6 +69,13 @@ const KYC_LABEL: Record<KycStatus, string> = {
   pending: "KYC Pending",
   rejected: "KYC Rejected",
   not_started: "No KYC",
+};
+
+const REVIEW_LABEL: Record<KycStatus, string> = {
+  verified: "Verified",
+  pending: "Under review",
+  rejected: "Rejected",
+  not_started: "Not started",
 };
 
 const WITHDRAWAL_STATUS_STYLE: Record<string, string> = {
@@ -217,6 +232,204 @@ function KycReviewCard({ creator }: { creator: AdminCreatorDetail }) {
   );
 }
 
+/* ── Signup verification (Instagram manually reviewed) ── */
+function OnboardingVerificationCard({ creator }: { creator: AdminCreatorDetail }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const review = useMutation({
+    mutationFn: (body: { action: "approve" | "reject"; reason?: string }) =>
+      adminApi.reviewInstagramOnboarding(getToken()!, creator.id, body.action, body.reason),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-creator", creator.id] });
+      setShowRejectForm(false);
+      setRejectReason("");
+      toast(variables.action === "reject" ? "Instagram rejected" : "Instagram approved");
+    },
+    onError: () => toast("Failed to update Instagram review", "error"),
+  });
+
+  const hasAnyData =
+    creator.requiresOnboardingGate ||
+    creator.instagramReview.status !== "not_started" ||
+    creator.instagramConnections.length > 0;
+
+  if (!hasAnyData) return null;
+
+  const needsAction =
+    creator.instagramConnections.length > 0 &&
+    (creator.instagramReview.status === "not_started" || creator.instagramReview.status === "pending");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {needsAction && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />}
+          <p className="text-sm font-semibold text-foreground">Signup Verification</p>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          Instagram reviewed manually
+        </span>
+      </div>
+
+      {/* One self-contained card — banner, status, connected account, and the review action all together */}
+      <div className="w-full max-w-xs overflow-hidden rounded-2xl border border-border bg-surface-variant/60 shadow-lg shadow-black/10">
+        <div className="relative h-16 w-full bg-linear-to-br from-pink-500/25 to-transparent">
+          <div className="absolute -bottom-6 left-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400 ring-4 ring-surface-variant">
+              <Instagram className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 p-4 pt-8">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-foreground">Instagram</p>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${KYC_STYLE[creator.instagramReview.status]}`}>
+              {REVIEW_LABEL[creator.instagramReview.status]}
+            </span>
+          </div>
+
+          {creator.instagramConnections.map((c) => (
+            <a
+              key={c.id}
+              href={`https://instagram.com/${c.platformHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-surface p-2.5 transition-colors hover:border-primary/30"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-variant text-muted">
+                {c.profilePictureUrl ? (
+                  <img src={c.profilePictureUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Instagram className="h-4 w-4" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">@{c.platformHandle}</p>
+                <p className="truncate text-[11px] text-muted">
+                  {formatViews(c.followerCount)} followers · {c.engagementRate.toFixed(1)}% eng.
+                </p>
+              </div>
+              {!c.isConnected ? (
+                <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-[9px] font-bold text-destructive">
+                  Disconnected
+                </span>
+              ) : (
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" />
+              )}
+            </a>
+          ))}
+
+          {creator.instagramReview.status === "rejected" && creator.instagramReview.rejectionReason && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold text-foreground">Rejection reason</p>
+              <p className="mt-1 text-xs text-muted">{creator.instagramReview.rejectionReason}</p>
+            </div>
+          )}
+
+          {(creator.instagramReview.status === "not_started" || creator.instagramReview.status === "pending") &&
+            (showRejectForm ? (
+              <div className="space-y-2">
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                  placeholder="Rejection reason (required)"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={review.isPending || !rejectReason.trim()}
+                  onClick={() => review.mutate({ action: "reject", reason: rejectReason })}
+                >
+                  {review.isPending ? "Rejecting…" : "Confirm Reject"}
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setShowRejectForm(false)} disabled={review.isPending}>
+                  Back
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Button className="w-full" onClick={() => review.mutate({ action: "approve" })} disabled={review.isPending}>
+                  {review.isPending ? "Approving…" : "Approve Instagram"}
+                </Button>
+                <Button variant="destructive" className="w-full" onClick={() => setShowRejectForm(true)} disabled={review.isPending}>
+                  Reject Instagram
+                </Button>
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Payout method row (with admin reveal-account-number action) ── */
+function PayoutMethodRow({ method }: { method: AdminCreatorPayoutMethod }) {
+  const { getToken } = useAuth();
+  const { toast } = useToast();
+  const [revealed, setRevealed] = useState<string | null>(null);
+
+  const reveal = useMutation({
+    mutationFn: () => adminApi.revealPayoutMethodAccountNumber(getToken()!, method.id),
+    onSuccess: (data) => setRevealed(data.accountNumber),
+    onError: () => toast("Failed to reveal account number", "error"),
+  });
+
+  const isBank = method.type.toLowerCase() !== "upi";
+  const fields = [
+    { label: "Holder", value: method.accountHolderName },
+    ...(isBank && method.bankName ? [{ label: "Bank", value: method.bankName }] : []),
+    ...(isBank && method.ifscCode ? [{ label: "IFSC", value: method.ifscCode }] : []),
+    ...(isBank && method.panNumber ? [{ label: "PAN", value: method.panNumber }] : []),
+  ];
+
+  return (
+    <div className="px-5 py-3.5">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-variant text-muted">
+          {isBank ? <Building2 className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold">{method.label}</p>
+            {method.isDefault && (
+              <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                Default
+              </span>
+            )}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              {isBank ? "Account" : "UPI ID"}:{" "}
+              <span className="font-medium text-foreground">{revealed ?? method.accountMasked}</span>
+              <button
+                type="button"
+                onClick={() => (revealed ? setRevealed(null) : reveal.mutate())}
+                disabled={reveal.isPending}
+                title={revealed ? "Hide number" : "Reveal number"}
+                className="text-muted transition hover:text-foreground disabled:opacity-50"
+              >
+                {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+            </span>
+            {fields.map((f) => (
+              <span key={f.label}>
+                {f.label}: <span className="font-medium text-foreground">{f.value}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminClipperDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { getToken } = useAuth();
@@ -290,6 +503,7 @@ export function AdminClipperDetailPage() {
       </div>
 
       <KycReviewCard creator={creator} />
+      <OnboardingVerificationCard creator={creator} />
 
       {/* Tabs */}
       <div className="flex border-b border-border">
@@ -366,24 +580,7 @@ export function AdminClipperDetailPage() {
             ) : (
               <div className="divide-y divide-border/60">
                 {creator.payoutMethods.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 px-5 py-3.5">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-variant text-muted">
-                      {m.type.toLowerCase() === "upi" ? (
-                        <Smartphone className="h-4 w-4" />
-                      ) : (
-                        <Building2 className="h-4 w-4" />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{m.label}</p>
-                      <p className="text-xs uppercase tracking-wide text-muted">{m.type} · {m.accountMasked}</p>
-                    </div>
-                    {m.isDefault && (
-                      <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                        Default
-                      </span>
-                    )}
-                  </div>
+                  <PayoutMethodRow key={m.id} method={m} />
                 ))}
               </div>
             )}
