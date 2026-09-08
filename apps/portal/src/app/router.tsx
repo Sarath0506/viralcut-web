@@ -78,6 +78,11 @@ const AdminClipperDetailPage = lazy(() =>
     default: m.AdminClipperDetailPage,
   })),
 );
+const AdminVerificationsPage = lazy(() =>
+  import("@/features/admin/pages/AdminVerificationsPage").then((m) => ({
+    default: m.AdminVerificationsPage,
+  })),
+);
 const AdminSupportTicketsPage = lazy(() =>
   import("@/features/admin/pages/AdminSupportTicketsPage").then((m) => ({
     default: m.AdminSupportTicketsPage,
@@ -365,6 +370,10 @@ export const router = createBrowserRouter([
                   {
                     path: "admin/clippers/:id",
                     element: withSuspense(<DetailPageSkeleton />, <AdminClipperDetailPage />),
+                  },
+                  {
+                    path: "admin/verifications",
+                    element: withSuspense(<PortalShellSkeleton />, <AdminVerificationsPage />),
                   },
                   {
                     path: "admin/support-tickets",

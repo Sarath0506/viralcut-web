@@ -41,6 +41,8 @@ export type CampaignDraft = {
   doRules: string;
   avoidRules: string;
   sourceAssets: SourceAsset[];
+  sourceVideoRequirement: "mandatory" | "optional" | "not_required";
+  sourceAudioRequirement: "mandatory" | "optional" | "not_required";
   referenceAssets: ReferenceAsset[];
   brief: string;
   productUrl: string;
@@ -65,6 +67,8 @@ const empty: CampaignDraft = {
   doRules: "",
   avoidRules: "",
   sourceAssets: [],
+  sourceVideoRequirement: "mandatory",
+  sourceAudioRequirement: "not_required",
   referenceAssets: [],
   brief: "",
   productUrl: "",

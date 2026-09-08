@@ -21,7 +21,7 @@ function mapSourceAssets(assets: Campaign["sourceAssets"]): SourceAsset[] {
     if (typeof item !== "object" || item === null) return [];
     const type = (item as { type?: string }).type;
     const url = (item as { url?: string }).url;
-    if ((type !== "drive" && type !== "youtube") || !url) return [];
+    if ((type !== "drive" && type !== "youtube" && type !== "upload") || !url) return [];
     return [
       createSourceAsset({
         type,
@@ -55,6 +55,8 @@ export function campaignToDraft(campaign: Campaign): CampaignDraft {
     doRules: campaign.doRules ?? "",
     avoidRules: campaign.avoidRules ?? "",
     sourceAssets: mapSourceAssets(campaign.sourceAssets),
+    sourceVideoRequirement: campaign.sourceVideoRequirement ?? "mandatory",
+    sourceAudioRequirement: campaign.sourceAudioRequirement ?? "not_required",
     referenceAssets: parseReferenceAssetsFromApi(campaign.referenceAssets),
     coverImageUrl: campaign.coverImageUrl ?? "",
     brief: campaign.brief,

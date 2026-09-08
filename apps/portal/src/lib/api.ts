@@ -308,7 +308,10 @@ export type Campaign = {
   briefHook: string | null;
   doRules: string | null;
   avoidRules: string | null;
-  sourceAssets: Array<{ type: "drive" | "youtube"; url: string; label?: string }> | null;
+  sourceAssets: Array<{ type: "drive" | "youtube" | "upload"; url: string; label?: string }> | null;
+  sourceVideoRequirement: "mandatory" | "optional" | "not_required";
+  sourceAudioRequirement: "mandatory" | "optional" | "not_required";
+  autoReviewEnabled: boolean;
   referenceAssets: Array<{ type: "image" | "video"; url: string; label?: string }> | null;
   coverImageUrl: string | null;
   productUrl: string | null;
@@ -397,6 +400,7 @@ export type DeliverableDetail = {
   platform: string;
   status: string;
   draftDriveUrl: string | null;
+  adminUploadedDraftUrl: string | null;
   livePostUrl: string | null;
   rejectionReason: string | null;
   draftSubmittedAt: string | null;
@@ -406,6 +410,11 @@ export type DeliverableDetail = {
   participationId: string;
   rejectionHistory: RejectionHistoryEvent[];
   campaign: { id: string; title: string; status: string; ratePer1kDisplay: string; budgetPaise: number };
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  estimatedPaise: number;
   creator: {
     id: string;
     displayName: string | null;
@@ -508,7 +517,11 @@ export type AdminCreatorPayoutMethod = {
   id: string;
   type: string;
   label: string;
+  accountHolderName: string;
   accountMasked: string;
+  ifscCode: string | null;
+  bankName: string | null;
+  panNumber: string | null;
   isDefault: boolean;
 };
 
@@ -520,6 +533,42 @@ export type AdminCreatorWithdrawal = {
   status: string;
   createdAt: string;
   processedAt: string | null;
+};
+
+export type AdminCreatorPan = {
+  number: string | null;
+  documentUrl: string | null;
+  verificationStatus: KycStatus;
+  verifiedName: string | null;
+  verifiedAt: string | null;
+  failureReason: string | null;
+};
+
+export type AdminCreatorAadhaar = {
+  documentUrl: string | null;
+  verificationStatus: KycStatus;
+  verifiedName: string | null;
+  maskedNumber: string | null;
+  verifiedAt: string | null;
+  failureReason: string | null;
+};
+
+export type AdminCreatorInstagramReview = {
+  status: KycStatus;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+};
+
+export type AdminCreatorInstagramConnection = {
+  id: string;
+  platformHandle: string;
+  followerCount: number;
+  followsCount: number;
+  mediaCount: number;
+  engagementRate: number;
+  profilePictureUrl: string | null;
+  isConnected: boolean;
+  lastSyncedAt: string;
 };
 
 export type AdminCreatorDetail = {
@@ -536,6 +585,11 @@ export type AdminCreatorDetail = {
   kycDocumentType: string | null;
   kycSubmittedAt: string | null;
   kycRejectionReason: string | null;
+  requiresOnboardingGate: boolean;
+  pan: AdminCreatorPan;
+  aadhaar: AdminCreatorAadhaar;
+  instagramReview: AdminCreatorInstagramReview;
+  instagramConnections: AdminCreatorInstagramConnection[];
   isActive: boolean;
   createdAt: string;
   linkedProfiles: LinkedCreatorProfile[];
@@ -546,6 +600,16 @@ export type AdminCreatorDetail = {
   pastCampaigns: AdminCreatorCampaignEntry[];
   totalViews: number;
   totalEarnedPaise: number;
+};
+
+export type AdminVerificationSummary = {
+  id: string;
+  displayName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  instagramReviewStatus: KycStatus;
+  overallStatus: "pending" | "approved" | "rejected";
+  updatedAt: string;
 };
 
 export type StaffBrand = {
@@ -762,6 +826,12 @@ const campaignsApi = {
       },
     );
   },
+  checkSourceAssetUrl: (token: string, url: string) =>
+    apiFetch<{ fetchable: boolean; reason?: string }>("/campaigns/source-assets/check-url", {
+      method: "POST",
+      accessToken: token,
+      body: JSON.stringify({ url }),
+    }),
   uploadCoverImage: (token: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -798,6 +868,18 @@ const submissionsApi = {
         body: JSON.stringify(body),
       },
     ),
+  uploadAdminDraftCopy: (token: string, deliverableId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiFetchForm<{ id: string; adminUploadedDraftUrl: string }>(
+      `/submissions/deliverables/${deliverableId}/admin-draft-copy`,
+      {
+        method: "POST",
+        accessToken: token,
+        body: formData,
+      },
+    );
+  },
   approveProof: (token: string, deliverableId: string) =>
     apiFetch<{ id: string; status: string }>(
       `/submissions/deliverables/${deliverableId}/approve-proof`,
@@ -814,6 +896,20 @@ const submissionsApi = {
     ),
   analyticsOverview: (token: string) =>
     apiFetch<AnalyticsOverview>("/submissions/analytics", { accessToken: token }),
+  refreshViews: (token: string, deliverableId: string) =>
+    apiFetch<{
+      id: string;
+      viewCount: number;
+      reach: number;
+      likeCount: number;
+      commentCount: number;
+      shareCount: number;
+      payoutCapped: boolean;
+      metricsSource: "instagram_insights" | "apify" | "unavailable";
+    }>(`/submissions/deliverables/${deliverableId}/refresh-views`, {
+      method: "POST",
+      accessToken: token,
+    }),
 };
 
 export type AnalyticsOverview = {
@@ -987,6 +1083,9 @@ export const adminApi = {
   creators: (token: string) =>
     apiFetch<AdminCreatorSummary[]>("/admin/creators", { accessToken: token }),
 
+  verifications: (token: string) =>
+    apiFetch<AdminVerificationSummary[]>("/admin/verifications", { accessToken: token }),
+
   creator: (token: string, id: string) =>
     apiFetch<AdminCreatorDetail>(`/admin/creators/${id}`, { accessToken: token }),
 
@@ -994,6 +1093,18 @@ export const adminApi = {
     apiFetch<{ id: string; kycStatus: KycStatus }>(`/admin/creators/${id}/kyc-review`, {
       method: "POST",
       body: JSON.stringify({ action, reason }),
+      accessToken: token,
+    }),
+
+  reviewInstagramOnboarding: (token: string, id: string, action: "approve" | "reject", reason?: string) =>
+    apiFetch<{ id: string; instagramReviewStatus: KycStatus }>(`/admin/creators/${id}/instagram-review`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason }),
+      accessToken: token,
+    }),
+
+  revealPayoutMethodAccountNumber: (token: string, payoutMethodId: string) =>
+    apiFetch<{ accountNumber: string }>(`/admin/payout-methods/${payoutMethodId}/reveal`, {
       accessToken: token,
     }),
 

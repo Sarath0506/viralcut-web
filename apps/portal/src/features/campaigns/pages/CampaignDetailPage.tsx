@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -19,7 +19,7 @@ import {
   StatusBoard,
   SubmissionGrid,
 } from "@/features/campaigns/components/campaign-board-widgets";
-import { useCampaign, useUpdateCampaignStatus } from "@/features/campaigns/hooks/use-campaigns";
+import { useCampaign, useUpdateCampaignAutoReview, useUpdateCampaignStatus } from "@/features/campaigns/hooks/use-campaigns";
 import {
   buildClipperProfiles,
   buildCreatorPerformance,
@@ -145,6 +145,7 @@ function SubmissionDetailModal({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showCreatorProfile, setShowCreatorProfile] = useState(false);
+  const adminDraftInputRef = useRef<HTMLInputElement>(null);
 
   const { data: d, isPending } = useSubmission(deliverableId);
 
@@ -183,11 +184,36 @@ function SubmissionDetailModal({
     onError: (err) => toast(err instanceof ApiError ? err.message : "Rejection failed", "error"),
   });
 
+  const uploadAdminDraftMutation = useMutation({
+    mutationFn: (file: File) => portalApi.submissions.uploadAdminDraftCopy(getToken()!, deliverableId, file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["submission", "deliverable", deliverableId] });
+      toast("Uploaded — automated review will check this now");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Upload failed", "error"),
+  });
+
+  const refreshViewsMutation = useMutation({
+    mutationFn: () => portalApi.submissions.refreshViews(getToken()!, deliverableId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["submission", "deliverable", deliverableId] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-deliverables"] });
+      toast("Views refreshed");
+    },
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Could not refresh views", "error"),
+  });
+
   const isMutating =
-    reviewMutation.isPending || approveProofMutation.isPending || rejectProofMutation.isPending;
+    reviewMutation.isPending ||
+    approveProofMutation.isPending ||
+    rejectProofMutation.isPending ||
+    uploadAdminDraftMutation.isPending;
 
   const canReviewDraft = d?.status === "under_review";
   const canReviewProof = d?.status === "proof_under_review" || d?.status === "live_submitted";
+  const canRefreshViews =
+    Boolean(d?.livePostUrl) &&
+    (d?.status === "live_submitted" || d?.status === "proof_under_review" || d?.status === "proof_approved");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -282,6 +308,85 @@ function SubmissionDetailModal({
                   </div>
                 )}
               </div>
+
+              {section === "proof" && d.livePostUrl && (
+                <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Performance</p>
+                    {canRefreshViews && (
+                      <button
+                        type="button"
+                        onClick={() => refreshViewsMutation.mutate()}
+                        disabled={refreshViewsMutation.isPending}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-foreground disabled:opacity-60"
+                      >
+                        <svg
+                          className={cn("h-3.5 w-3.5", refreshViewsMutation.isPending && "animate-spin")}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {refreshViewsMutation.isPending ? "Refreshing…" : "Refresh views"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    {[
+                      { label: "Views", value: formatCount(d.viewCount) },
+                      { label: "Likes", value: formatCount(d.likeCount) },
+                      { label: "Comments", value: formatCount(d.commentCount) },
+                      { label: "Shares", value: formatCount(d.shareCount) },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded-lg border border-border bg-surface px-3 py-2 text-center">
+                        <p className="text-lg font-black">{value}</p>
+                        <p className="text-[10px] text-muted">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted">
+                    Views sync automatically every few minutes — refresh here if you need the latest number right now.
+                  </p>
+                </div>
+              )}
+
+              {section === "submissions" && d.draftDriveUrl?.includes("drive.google.com") && (
+                <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                    Automated review
+                  </p>
+                  <p className="mt-1.5 text-sm text-muted">
+                    {d.adminUploadedDraftUrl
+                      ? "A copy is on file — automated review can check this submission."
+                      : "This is a Google Drive link — automated review can't fetch it directly. Download it from the Drive link above, then upload a copy here."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => adminDraftInputRef.current?.click()}
+                    disabled={uploadAdminDraftMutation.isPending}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium hover:bg-surface-variant disabled:opacity-60"
+                  >
+                    {uploadAdminDraftMutation.isPending
+                      ? "Uploading…"
+                      : d.adminUploadedDraftUrl
+                        ? "Replace uploaded copy"
+                        : "Upload a copy from this device"}
+                  </button>
+                  <input
+                    ref={adminDraftInputRef}
+                    type="file"
+                    accept="video/*,image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadAdminDraftMutation.mutate(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              )}
 
               {d.rejectionReason && (
                 <div className="rounded-xl bg-surface-variant/50 p-4">
@@ -409,9 +514,9 @@ function PayoutsPanel({ campaignId }: { campaignId: string }) {
     onSuccess: (res) => {
       invalidate();
       setConfirmTarget(null);
-      toast(res.paidCount > 0 ? `Paid ${formatInr(res.totalPaidPaise)} across ${res.paidCount} deliverable${res.paidCount === 1 ? "" : "s"}` : "Nothing to pay");
+      toast(res.paidCount > 0 ? `Marked ${formatInr(res.totalPaidPaise)} as paid across ${res.paidCount} deliverable${res.paidCount === 1 ? "" : "s"}` : "Nothing to mark as paid");
     },
-    onError: (err) => toast(err instanceof ApiError ? err.message : "Payout failed", "error"),
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Failed to mark as paid", "error"),
   });
 
   const payCreatorMutation = useMutation({
@@ -419,9 +524,9 @@ function PayoutsPanel({ campaignId }: { campaignId: string }) {
     onSuccess: (res) => {
       invalidate();
       setConfirmTarget(null);
-      toast(res.paidCount > 0 ? `Paid ${formatInr(res.totalPaidPaise)}` : "Nothing to pay");
+      toast(res.paidCount > 0 ? `Marked ${formatInr(res.totalPaidPaise)} as paid` : "Nothing to mark as paid");
     },
-    onError: (err) => toast(err instanceof ApiError ? err.message : "Payout failed", "error"),
+    onError: (err) => toast(err instanceof ApiError ? err.message : "Failed to mark as paid", "error"),
   });
 
   const isMutating = payAllMutation.isPending || payCreatorMutation.isPending;
@@ -445,13 +550,13 @@ function PayoutsPanel({ campaignId }: { campaignId: string }) {
     <div className="space-y-4">
       <ConfirmDialog
         open={confirmTarget !== null}
-        title={confirmTarget?.type === "all" ? "Pay all creators?" : `Pay ${confirmTarget?.type === "creator" ? confirmTarget.creatorName : ""}?`}
+        title={confirmTarget?.type === "all" ? "Mark all as paid?" : `Mark ${confirmTarget?.type === "creator" ? confirmTarget.creatorName : ""} as paid?`}
         description={
           confirmTarget?.type === "all"
-            ? `This will pay ${formatInr(totalUnpaidPaise)} across ${creatorsWithUnpaid} creator${creatorsWithUnpaid === 1 ? "" : "s"} for this campaign's approved work.`
-            : `This will pay ${formatInr(payouts.find((p) => confirmTarget?.type === "creator" && p.creatorId === confirmTarget.creatorId)?.totalUnpaidPaise ?? 0)} to this creator for this campaign's approved work.`
+            ? `Only confirm this once you've manually sent ${formatInr(totalUnpaidPaise)} across ${creatorsWithUnpaid} creator${creatorsWithUnpaid === 1 ? "" : "s"} — this moves it from pending into their Total earned.`
+            : `Only confirm this once you've manually sent ${formatInr(payouts.find((p) => confirmTarget?.type === "creator" && p.creatorId === confirmTarget.creatorId)?.totalUnpaidPaise ?? 0)} to this creator — this moves it from pending into their Total earned.`
         }
-        confirmLabel="Pay"
+        confirmLabel="Mark Paid"
         loading={isMutating}
         onCancel={() => setConfirmTarget(null)}
         onConfirm={() => {
@@ -467,7 +572,7 @@ function PayoutsPanel({ campaignId }: { campaignId: string }) {
           <p className="mt-0.5 text-xs text-muted">{creatorsWithUnpaid} creator{creatorsWithUnpaid === 1 ? "" : "s"} awaiting payout</p>
         </div>
         <Button disabled={totalUnpaidPaise === 0 || isMutating} onClick={() => setConfirmTarget({ type: "all" })}>
-          Pay All
+          Mark All Paid
         </Button>
       </div>
 
@@ -491,7 +596,7 @@ function PayoutsPanel({ campaignId }: { campaignId: string }) {
                   disabled={isMutating}
                   onClick={() => setConfirmTarget({ type: "creator", creatorId: p.creatorId, creatorName: p.creatorName })}
                 >
-                  Pay {formatInr(p.totalUnpaidPaise)}
+                  Mark {formatInr(p.totalUnpaidPaise)} Paid
                 </Button>
               ) : (
                 <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400">
@@ -550,6 +655,7 @@ export function CampaignDetailPage() {
     enabled: Boolean(getToken() && id),
   });
   const updateStatus = useUpdateCampaignStatus();
+  const updateAutoReview = useUpdateCampaignAutoReview();
   const queryClient = useQueryClient();
 
   const clipperIntakeMutation = useMutation({
@@ -590,6 +696,17 @@ export function CampaignDetailPage() {
     const url = `${window.location.origin}/share/campaigns/${id}`;
     await navigator.clipboard.writeText(url);
     toast("Read-only campaign link copied");
+  }
+
+  async function toggleAutoReview() {
+    if (!id || !campaign) return;
+    const next = !campaign.autoReviewEnabled;
+    try {
+      await updateAutoReview.mutateAsync({ id, autoReviewEnabled: next });
+      toast(next ? "Auto-verification turned on" : "Auto-verification turned off");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Could not update auto-verification", "error");
+    }
   }
 
   const clippers = buildClipperProfiles(deliverables);
@@ -676,6 +793,23 @@ export function CampaignDetailPage() {
                 {campaign.status !== "draft" && (
                   <Button size="sm" variant="outline" onClick={() => void copyShareLink()}>
                     Share
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={updateAutoReview.isPending}
+                    onClick={() => void toggleAutoReview()}
+                    title="Whether the automated review pipeline checks this campaign's submissions"
+                  >
+                    <span
+                      className={cn(
+                        "mr-1.5 inline-block h-2 w-2 rounded-full",
+                        campaign.autoReviewEnabled ? "bg-green-400" : "bg-muted",
+                      )}
+                    />
+                    Auto-verification {campaign.autoReviewEnabled ? "on" : "off"}
                   </Button>
                 )}
               </div>
