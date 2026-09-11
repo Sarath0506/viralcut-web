@@ -429,6 +429,27 @@ export type DeliverableDetail = {
     draftDriveUrl: string | null;
     rejectionReason: string | null;
   }>;
+  autoReview: AutoReviewResult[];
+};
+
+/** One shadow-mode auto-review pipeline run — most recent first. Purely
+ * informational (never drives status); empty until AUTO_REVIEW_ENABLED is on
+ * and at least one submission has gone through the pipeline. */
+export type AutoReviewResult = {
+  id: string;
+  stage: "draft" | "proof";
+  decision: "auto_approved" | "auto_rejected" | "needs_review";
+  tier1Results: Array<{ gate: string; status: "pass" | "fail" | "unresolved"; reason: string }>;
+  tier2Results: Array<{
+    criterionId: string;
+    label: string;
+    pass: boolean;
+    confidence: number;
+    reason: string;
+    required: boolean;
+  }> | null;
+  modelVersion: string | null;
+  createdAt: string;
 };
 
 export type BrandStats = {
