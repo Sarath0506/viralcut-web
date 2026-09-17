@@ -63,7 +63,10 @@ export function AdminClippersPage() {
         (c.displayName ?? "").toLowerCase().includes(q) ||
         (c.username ?? "").toLowerCase().includes(q) ||
         (c.email ?? "").toLowerCase().includes(q) ||
-        (c.phone ?? "").toLowerCase().includes(q),
+        (c.phone ?? "").toLowerCase().includes(q) ||
+        // Matches with or without the leading "#" — leaderboards show
+        // verified creators as "#123456789" in place of their real name.
+        (c.verifiedCreatorId ?? "").includes(q.replace(/^#/, "")),
       )
     : creators;
   const visible = sortCreators(filtered, sort);

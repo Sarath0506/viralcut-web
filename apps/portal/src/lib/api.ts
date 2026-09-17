@@ -517,6 +517,7 @@ export type AdminCreatorSummary = {
   email: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  verifiedCreatorId: string | null;
   kycStatus: KycStatus;
   isActive: boolean;
   createdAt: string;
@@ -601,6 +602,7 @@ export type AdminCreatorDetail = {
   avatarUrl: string | null;
   bio: string | null;
   socialLinks: Record<string, string> | null;
+  verifiedCreatorId: string | null;
   kycStatus: KycStatus;
   kycDocumentUrl: string | null;
   kycDocumentType: string | null;

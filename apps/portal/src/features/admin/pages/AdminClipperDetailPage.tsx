@@ -485,6 +485,11 @@ export function AdminClipperDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold">{name}</h1>
+            {creator.verifiedCreatorId && (
+              <span className="rounded-full bg-surface-variant px-2 py-0.5 text-[10px] font-bold text-muted">
+                #{creator.verifiedCreatorId}
+              </span>
+            )}
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${KYC_STYLE[creator.kycStatus]}`}>
               {KYC_LABEL[creator.kycStatus]}
             </span>
