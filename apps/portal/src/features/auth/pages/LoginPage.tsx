@@ -5,11 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthPasswordField } from "@/components/auth/auth-password-field";
 import { AuthPrimaryButton } from "@/components/auth/auth-primary-button";
-import {
-  authFooterLinkClass,
-  authFormClass,
-  authMutedFooterClass,
-} from "@/components/auth/auth-styles";
+import { authFormClass } from "@/components/auth/auth-styles";
 import { AuthTextField } from "@/components/auth/auth-text-field";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import {
@@ -112,13 +108,6 @@ export function LoginPage() {
 
       <AuthDivider label="or" />
       <GoogleSignInButton onClick={onGoogleSignIn} />
-
-      <p className={authMutedFooterClass}>
-        New brand?{" "}
-        <Link to="/signup" className={authFooterLinkClass}>
-          Create account
-        </Link>
-      </p>
     </AuthSplitLayout>
   );
 }
