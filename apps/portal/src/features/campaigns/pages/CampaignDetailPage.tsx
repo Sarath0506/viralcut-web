@@ -33,7 +33,7 @@ import { useSubmission } from "@/features/submissions/hooks/use-submissions";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { formatInr } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { adminApi, portalApi, ApiError, type CampaignCreatorPayout } from "@/lib/api";
+import { adminApi, portalApi, ApiError, type AutoReviewResult, type CampaignCreatorPayout } from "@/lib/api";
 import { useAuth, usePortalRole } from "@/providers/auth-provider";
 
 type Tab = "overview" | "clippers" | "board" | "submissions" | "proof" | "analytics" | "payouts";
@@ -459,6 +459,8 @@ function SubmissionDetailModal({
                 </div>
               </div>
 
+              <AutoReviewPanel results={d.autoReview} stage={section === "proof" ? "proof" : "draft"} />
+
               {d.rejectionHistory.length > 0 && (
                 <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">History</p>
@@ -481,6 +483,98 @@ function SubmissionDetailModal({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Automated review — shadow-mode Gemini pipeline results, purely
+   informational (never drives status). Filtered to whichever stage this
+   modal is open on (draft submission vs live proof) and shows the most
+   recent run expanded, with any earlier attempts (e.g. after a resubmit)
+   collapsed below it, same "History" pattern as rejectionHistory. ── */
+
+function AutoReviewPanel({ results, stage }: { results: AutoReviewResult[]; stage: "draft" | "proof" }) {
+  const forStage = results.filter((r) => r.stage === stage);
+  if (forStage.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Automated Review</p>
+        <p className="mt-2 text-sm text-muted">
+          No automated review yet — either it hasn't run for this submission, or it's turned off for this campaign.
+        </p>
+      </div>
+    );
+  }
+
+  const [latest, ...earlier] = forStage;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Automated Review</p>
+        <StatusPill status={latest.decision} />
+      </div>
+      <p className="mt-1 text-xs text-muted">
+        {formatDate(latest.createdAt)}
+        {latest.modelVersion ? ` · ${latest.modelVersion}` : ""}
+      </p>
+
+      <div className="mt-3 space-y-1.5">
+        {latest.tier1Results.map((gate, i) => (
+          <AutoReviewCheckRow
+            key={`t1-${i}`}
+            pass={gate.status === "pass"}
+            unresolved={gate.status === "unresolved"}
+            label={gate.gate.replace(/_/g, " ")}
+            reason={gate.reason}
+          />
+        ))}
+        {latest.tier2Results?.map((c) => (
+          <AutoReviewCheckRow key={c.criterionId} pass={c.pass} label={c.label} reason={c.reason} />
+        ))}
+      </div>
+
+      {earlier.length > 0 && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-foreground">
+            {earlier.length} earlier attempt{earlier.length > 1 ? "s" : ""}
+          </summary>
+          <div className="mt-2 space-y-2">
+            {earlier.map((r) => (
+              <div key={r.id} className="rounded-lg border border-border bg-surface px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">{formatDate(r.createdAt)}</span>
+                  <StatusPill status={r.decision} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function AutoReviewCheckRow({
+  pass,
+  unresolved,
+  label,
+  reason,
+}: {
+  pass: boolean;
+  unresolved?: boolean;
+  label: string;
+  reason: string;
+}) {
+  const color = unresolved ? "text-muted" : pass ? "text-money" : "text-destructive";
+  const icon = unresolved ? "–" : pass ? "✓" : "✗";
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <span className={cn("mt-0.5 font-bold", color)}>{icon}</span>
+      <div>
+        <p className="capitalize text-foreground">{label}</p>
+        <p className="text-muted">{reason}</p>
       </div>
     </div>
   );

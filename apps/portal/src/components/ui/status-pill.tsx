@@ -30,6 +30,9 @@ const styles: Record<string, string> = {
   open: "bg-money/15 text-money",
   closed_at_threshold: "bg-warning/15 text-warning",
   manually_extended: "bg-primary/15 text-primary",
+  auto_approved: "bg-money/15 text-money",
+  auto_rejected: "bg-destructive/15 text-destructive",
+  needs_review: "bg-warning/15 text-warning",
 };
 
 const labels: Record<string, string> = {
@@ -37,6 +40,9 @@ const labels: Record<string, string> = {
   support_ticket_under_review: "UNDER REVIEW",
   closed_at_threshold: "CLOSED",
   manually_extended: "EXTENDED",
+  auto_approved: "AUTO-APPROVED",
+  auto_rejected: "AUTO-REJECTED",
+  needs_review: "NEEDS REVIEW",
 };
 
 export function StatusPill({

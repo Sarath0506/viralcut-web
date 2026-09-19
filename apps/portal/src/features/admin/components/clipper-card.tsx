@@ -77,6 +77,11 @@ export function ClipperCard({ creator }: { creator: AdminCreatorSummary }) {
         </div>
 
         <p className="mt-2.5 truncate font-bold leading-tight">{name}</p>
+        {creator.verifiedCreatorId && (
+          <p className="mt-0.5 truncate text-[11px] font-medium text-muted">
+            #{creator.verifiedCreatorId}
+          </p>
+        )}
         <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted">
           <Mail className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           {creator.email ?? creator.phone ?? "—"}
