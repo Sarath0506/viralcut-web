@@ -331,7 +331,7 @@ function OnboardingVerificationCard({ creator }: { creator: AdminCreatorDetail }
             </div>
           )}
 
-          {(creator.instagramReview.status === "not_started" || creator.instagramReview.status === "pending") &&
+          {needsAction &&
             (showRejectForm ? (
               <div className="space-y-2">
                 <textarea

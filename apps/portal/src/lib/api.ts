@@ -430,6 +430,7 @@ export type DeliverableDetail = {
     rejectionReason: string | null;
   }>;
   autoReview: AutoReviewResult[];
+  autoReviewMaxRetries: number;
 };
 
 /** One shadow-mode auto-review pipeline run — most recent first. Purely

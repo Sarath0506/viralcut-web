@@ -339,7 +339,10 @@ export function AdminBrandDetailPage() {
     mutationFn: () =>
       portalApi.campaigns.create(getToken()!, {
         brandProfileId: id,
-        title: "New Campaign",
+        // Left blank on purpose — the Basics step's Next button already
+        // requires a real title before the wizard can proceed, so a
+        // placeholder here just risks becoming the actual saved name.
+        title: "",
         status: "draft",
         platforms: ["instagram_reel"],
         ratePer1kPaise: 5000,

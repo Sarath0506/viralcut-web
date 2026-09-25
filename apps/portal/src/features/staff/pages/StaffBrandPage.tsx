@@ -99,7 +99,9 @@ export function StaffBrandPage() {
     mutationFn: () =>
       staffApi.createCampaign(getToken()!, brandId!, {
         brandProfileId: brandId,
-        title: "New Campaign",
+        // Left blank on purpose — see AdminBrandDetailPage's createCampaign
+        // for why a placeholder here is worse than an empty field.
+        title: "",
         status: "draft",
         platforms: ["instagram_reel"],
         ratePer1kPaise: 5000,

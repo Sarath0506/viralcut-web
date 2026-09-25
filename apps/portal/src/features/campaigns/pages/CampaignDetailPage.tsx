@@ -459,7 +459,11 @@ function SubmissionDetailModal({
                 </div>
               </div>
 
-              <AutoReviewPanel results={d.autoReview} stage={section === "proof" ? "proof" : "draft"} />
+              <AutoReviewPanel
+                results={d.autoReview}
+                stage={section === "proof" ? "proof" : "draft"}
+                maxRetries={d.autoReviewMaxRetries}
+              />
 
               {d.rejectionHistory.length > 0 && (
                 <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
@@ -494,7 +498,15 @@ function SubmissionDetailModal({
    recent run expanded, with any earlier attempts (e.g. after a resubmit)
    collapsed below it, same "History" pattern as rejectionHistory. ── */
 
-function AutoReviewPanel({ results, stage }: { results: AutoReviewResult[]; stage: "draft" | "proof" }) {
+function AutoReviewPanel({
+  results,
+  stage,
+  maxRetries,
+}: {
+  results: AutoReviewResult[];
+  stage: "draft" | "proof";
+  maxRetries: number;
+}) {
   const forStage = results.filter((r) => r.stage === stage);
   if (forStage.length === 0) {
     return (
@@ -508,17 +520,47 @@ function AutoReviewPanel({ results, stage }: { results: AutoReviewResult[]; stag
   }
 
   const [latest, ...earlier] = forStage;
+  const attemptsUsed = forStage.length;
+  // A needs_review result on its own doesn't say whether the AI is still
+  // working this or has stalled — the sweep keeps retrying up to
+  // maxRetries attempts (~an hour), then stops for good. This is the only
+  // thing that actually tells "still checking" apart from "gave up",
+  // which is the whole point of this panel.
+  const stillRetrying = latest.decision === "needs_review" && attemptsUsed < maxRetries;
+  const gaveUp = latest.decision === "needs_review" && attemptsUsed >= maxRetries;
 
   return (
     <div className="rounded-xl border border-border bg-surface-variant/50 p-4">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Automated Review</p>
-        <StatusPill status={latest.decision} />
+        {stillRetrying ? (
+          <span className="flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            Checking…
+          </span>
+        ) : (
+          <StatusPill status={latest.decision} />
+        )}
       </div>
       <p className="mt-1 text-xs text-muted">
         {formatDate(latest.createdAt)}
         {latest.modelVersion ? ` · ${latest.modelVersion}` : ""}
+        {latest.decision === "needs_review" ? ` · attempt ${attemptsUsed} of ${maxRetries}` : ""}
       </p>
+
+      {stillRetrying && (
+        <p className="mt-2 rounded-lg bg-primary/10 px-2.5 py-2 text-xs text-primary">
+          Still actively checking this — it automatically rechecks every few minutes. This updates live, no need to refresh.
+        </p>
+      )}
+      {gaveUp && (
+        <p className="mt-2 rounded-lg bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+          Automated review couldn't reach a decision after {attemptsUsed} attempts — this needs a manual look, it won't resolve on its own.
+        </p>
+      )}
 
       <div className="mt-3 space-y-1.5">
         {latest.tier1Results.map((gate, i) => (
